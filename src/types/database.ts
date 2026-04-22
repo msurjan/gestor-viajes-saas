@@ -130,6 +130,7 @@ export interface RadarEvento {
   presupuesto_max_noche: number | null
   presupuesto_max_vuelo: number | null
   moneda: string
+  tema: string | null
   created_at: string
   updated_at: string
 }

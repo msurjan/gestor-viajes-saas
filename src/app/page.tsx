@@ -15,6 +15,26 @@ import {
   ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
 import Link from 'next/link'
+import { TEMAS } from '@/app/radar/page'
+
+const TEMA_COLORS: Record<string, string> = {
+  'Innovación': 'bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200',
+  'Maquinaria': 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200',
+  'Finanzas':   'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200',
+  'Geología':   'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200',
+  'Energía':    'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200',
+  'Minería':    'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200',
+  'Otro':       'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200',
+}
+const TEMA_ACTIVE: Record<string, string> = {
+  'Innovación': 'bg-violet-600 text-white border-violet-600',
+  'Maquinaria': 'bg-orange-500 text-white border-orange-500',
+  'Finanzas':   'bg-blue-600 text-white border-blue-600',
+  'Geología':   'bg-amber-600 text-white border-amber-600',
+  'Energía':    'bg-yellow-500 text-white border-yellow-500',
+  'Minería':    'bg-stone-600 text-white border-stone-600',
+  'Otro':       'bg-slate-600 text-white border-slate-600',
+}
 
 const CalendarioWrapper = dynamic(
   () => import('@/components/CalendarioWrapper'),
@@ -66,6 +86,7 @@ function DeltaBadge({ precio, ppto }: { precio: number | null; ppto: number | nu
 export default function DashboardPage() {
   const [radares, setRadares]       = useState<RadarEvento[]>([])
   const [loading, setLoading]       = useState(true)
+  const [temaActivo, setTemaActivo] = useState<string | null>(null)
 
   // Historial modal
   const [histRadar, setHistRadar]   = useState<RadarEvento | null>(null)
@@ -85,7 +106,14 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchRadares() }, [fetchRadares])
 
-  const calendarEvents: EventInput[] = radares.map(r => ({
+  // Temas que realmente tienen eventos cargados
+  const temasConEventos = TEMAS.filter(t => radares.some(r => r.tema === t))
+
+  const radaresVisibles = temaActivo
+    ? radares.filter(r => r.tema === temaActivo)
+    : radares
+
+  const calendarEvents: EventInput[] = radaresVisibles.map(r => ({
     id:              r.id,
     title:           r.nombre_clave,
     start:           r.fecha_estimada,
@@ -161,6 +189,40 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* ── Tema pins ─────────────────────────────────────────────────── */}
+      {temasConEventos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 mr-1">Filtrar por tema:</span>
+          <button
+            onClick={() => setTemaActivo(null)}
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              temaActivo === null
+                ? 'bg-[#0c1e3c] text-white border-[#0c1e3c]'
+                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Todos ({radares.length})
+          </button>
+          {temasConEventos.map(tema => {
+            const count  = radares.filter(r => r.tema === tema).length
+            const active = temaActivo === tema
+            return (
+              <button
+                key={tema}
+                onClick={() => setTemaActivo(prev => prev === tema ? null : tema)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  active
+                    ? (TEMA_ACTIVE[tema] ?? 'bg-slate-600 text-white border-slate-600')
+                    : (TEMA_COLORS[tema] ?? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200')
+                }`}
+              >
+                {tema} · {count}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── Legend ────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <span className="font-medium text-slate-600">Leyenda:</span>
@@ -185,11 +247,11 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Active radar list ──────────────────────────────────────────── */}
-      {radares.length > 0 && (
+      {radaresVisibles.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-3 flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              Monitores activos ({radares.length})
+              Monitores activos ({radaresVisibles.length}{temaActivo ? ` · ${temaActivo}` : ''})
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -198,6 +260,7 @@ export default function DashboardPage() {
                 <tr className="border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wide text-left">
                   <th className="px-4 py-2.5 font-medium w-6" />
                   <th className="px-4 py-2.5 font-medium">Evento</th>
+                  <th className="px-4 py-2.5 font-medium">Tema</th>
                   <th className="px-4 py-2.5 font-medium">Fecha</th>
                   <th className="px-4 py-2.5 font-medium text-right">Ppto. Vuelo SCL</th>
                   <th className="px-4 py-2.5 font-medium text-right">Ppto. Hotel/noche</th>
@@ -206,7 +269,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {radares.map(r => {
+                {radaresVisibles.map(r => {
                   const s    = SEMAPHORE[r.estado_radar]
                   const dias = Math.ceil((new Date(r.fecha_estimada).getTime() - Date.now()) / 86400000)
                   return (
@@ -220,6 +283,12 @@ export default function DashboardPage() {
                       <td className="px-4 py-3">
                         <p className="font-medium text-[#0c1e3c]">{r.nombre_clave}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{[r.ciudad, r.pais].filter(Boolean).join(', ') || '—'}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.tema
+                          ? <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${TEMA_COLORS[r.tema] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>{r.tema}</span>
+                          : <span className="text-slate-300 text-xs">—</span>
+                        }
                       </td>
                       <td className="px-4 py-3 text-slate-500 text-xs">
                         <p>{new Date(r.fecha_estimada).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</p>

@@ -39,11 +39,13 @@ const SEMAPHORE: Record<EstadoRadar, { dot: string; badge: string; label: string
 
 const ESTADOS: EstadoRadar[] = ['buscando_precios', 'ventana_optima', 'expirado']
 const MONEDAS = ['USD', 'EUR', 'MXN', 'COP', 'ARS']
+export const TEMAS = ['Innovación', 'Maquinaria', 'Finanzas', 'Geología', 'Energía', 'Minería', 'Otro']
 
 const EMPTY_FORM: RadarEventoInsert = {
   nombre_clave: '', fecha_estimada: '', ciudad: null, pais: null,
   fuente_url: null, estado_radar: 'buscando_precios',
   presupuesto_max_noche: null, presupuesto_max_vuelo: null, moneda: 'USD',
+  tema: null,
 }
 
 function inp() {
@@ -98,7 +100,8 @@ export default function RadarPage() {
 
   // Borrador validation modal
   const [selectedBorrador, setSelectedBorrador] = useState<EventoBorrador | null>(null)
-  const [validating, setValidating]   = useState(false)
+  const [borradorTema, setBorradorTema]         = useState<string>('')
+  const [validating, setValidating]             = useState(false)
 
   // Historial modal
   const [histRadar, setHistRadar]     = useState<RadarEvento | null>(null)
@@ -149,6 +152,7 @@ export default function RadarPage() {
   function handleEventClick(arg: EventClickArg) {
     const { type, data } = arg.event.extendedProps
     if (type === 'borrador') {
+      setBorradorTema('')
       setSelectedBorrador(data as EventoBorrador)
     } else {
       openHistorial(data as RadarEvento)
@@ -180,6 +184,7 @@ export default function RadarPage() {
       presupuesto_max_noche: null,
       presupuesto_max_vuelo: null,
       moneda:                'USD',
+      tema:                  borradorTema || null,
     }
     const { error } = await supabase.from('radar_eventos').insert(payload)
     setValidating(false)
@@ -514,6 +519,32 @@ export default function RadarPage() {
                 <span className="truncate">{selectedBorrador.fuente_url}</span>
               </a>
 
+              {/* Tema selector */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                  Tema estratégico
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TEMAS.map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setBorradorTema(prev => prev === t ? '' : t)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                        borradorTema === t
+                          ? 'bg-violet-600 text-white border-violet-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:text-violet-700'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                {!borradorTema && (
+                  <p className="text-xs text-slate-400">Opcional — ayuda a filtrar el calendario.</p>
+                )}
+              </div>
+
               {/* Confidence */}
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -724,6 +755,14 @@ export default function RadarPage() {
                     </select>
                   </Fld>
                 </div>
+              </Sec>
+              <Sec title="Tema estratégico">
+                <Fld label="Tema">
+                  <select value={form.tema ?? ''} onChange={e => field('tema', e.target.value)} className={inp()}>
+                    <option value="">Sin tema</option>
+                    {TEMAS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </Fld>
               </Sec>
               <Sec title="Presupuestos máximos">
                 <Fld label="Moneda">

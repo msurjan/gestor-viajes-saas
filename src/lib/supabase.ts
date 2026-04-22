@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 // Strip /rest/v1/ suffix that Supabase adds to REST URLs but which
 // the JS SDK must NOT receive — it builds its own path internally.
@@ -21,4 +21,5 @@ if (typeof window !== 'undefined' && key.startsWith('sb_secret_')) {
 const validUrl = /^https?:\/\/.+/.test(url) ? url : 'https://placeholder.supabase.co'
 const validKey = key || 'placeholder-key'
 
-export const supabase = createClient(validUrl, validKey)
+// createBrowserClient automatically syncs the auth session into cookies!
+export const supabase = createBrowserClient(validUrl, validKey)

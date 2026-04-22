@@ -1,23 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import {
   LayoutDashboard,
   CalendarDays,
-  Building2,
   Globe,
   Radar,
+  LogOut,
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/',            label: 'Dashboard',   icon: LayoutDashboard },
-  { href: '/eventos',     label: 'Eventos',     icon: CalendarDays    },
-  { href: '/radar',       label: 'Radar',       icon: Radar           },
+  { href: '/',        label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/eventos', label: 'Eventos',   icon: CalendarDays    },
+  { href: '/radar',   label: 'Radar IA',  icon: Radar           },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router   = useRouter()
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-[#0c1e3c] text-white">
@@ -53,9 +61,16 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-white/10 px-6 py-4">
-        <p className="text-[11px] text-blue-200/40">MVP v0.1 · 2026</p>
+      {/* Footer: sign-out */}
+      <div className="border-t border-white/10 px-3 py-4 space-y-3">
+        <button
+          onClick={handleSignOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-100/70 hover:bg-white/[0.08] hover:text-white transition-colors"
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+          Cerrar sesión
+        </button>
+        <p className="text-[11px] text-blue-200/30 px-3">MVP v0.1 · 2026</p>
       </div>
     </aside>
   )
