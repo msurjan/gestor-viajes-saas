@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { EventoAgenda, EstadoAgenda, NoticiaEvento } from '@/types/database'
@@ -58,7 +58,8 @@ export default function EventoDetallePage() {
 
   const [session, setSession] = useState<any>(null)
   const [sessionLoaded, setSessionLoaded] = useState(false)
-
+  const [isDemo, setIsDemo] = useState(false)
+  const [isGuest, setIsGuest] = useState(false)
   const [evento, setEvento] = useState<EventoAgenda | null>(null)
   const [estadoAsistencia, setEstadoAsistencia] = useState<EstadoAgenda | null>(null)
   const [noticias, setNoticias] = useState<NoticiaEvento[]>([])
@@ -73,10 +74,21 @@ export default function EventoDetallePage() {
   const [shareEmail, setShareEmail] = useState('')
   const [shareNote, setShareNote] = useState('')
 
+  async function checkDemoStatus(userId: string) {
+    const { data } = await supabase.from('perfiles_usuarios').select('es_demo').eq('user_id', userId).single()
+    if (data) setIsDemo(!!data.es_demo)
+  }
+
   // Auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      if (session) {
+        checkDemoStatus(session.user.id)
+        localStorage.removeItem('isGuest')
+      } else {
+        setIsGuest(localStorage.getItem('isGuest') === 'true')
+      }
       setSessionLoaded(true)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
@@ -87,24 +99,36 @@ export default function EventoDetallePage() {
   }, [])
 
   const fetchData = useCallback(async () => {
-    if (!eventoId || !session?.user?.id) return
+    if (!eventoId || (!session?.user?.id && !isGuest)) return
     setLoading(true)
+    
+    const fetchPromises: Promise<any>[] = [
+      supabase.from('eventos_agenda').select('*').eq('id', eventoId).maybeSingle()
+    ]
 
-    const [{ data: ev }, { data: asist }, { data: news }] = await Promise.all([
-      supabase.from('eventos_agenda').select('*').eq('id', eventoId).maybeSingle(),
-      supabase
-        .from('asistencias_eventos')
-        .select('estado_asistencia')
-        .eq('user_id', session.user.id)
-        .eq('evento_id', eventoId)
-        .maybeSingle(),
+    if (session?.user?.id) {
+      fetchPromises.push(
+        supabase
+          .from('asistencias_eventos')
+          .select('estado_asistencia')
+          .eq('user_id', session.user.id)
+          .eq('evento_id', eventoId)
+          .maybeSingle()
+      )
+    } else {
+      fetchPromises.push(Promise.resolve({ data: null }))
+    }
+
+    fetchPromises.push(
       supabase
         .from('noticias_eventos')
         .select('*')
         .eq('evento_id', eventoId)
         .order('fecha_publicacion', { ascending: false })
-        .limit(5),
-    ])
+        .limit(5)
+    )
+
+    const [{ data: ev }, { data: asist }, { data: news }] = await Promise.all(fetchPromises)
 
     if (!ev) {
       setNotFound(true)
@@ -114,7 +138,7 @@ export default function EventoDetallePage() {
       setNoticias(news ?? [])
     }
     setLoading(false)
-  }, [eventoId, session])
+  }, [eventoId, session, isGuest])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -140,7 +164,7 @@ export default function EventoDetallePage() {
     setSavingStatus(false)
   }
 
-  async function handleDesvincular() {
+  async function handleDelete() {
     if (!session?.user?.id || !eventoId) return
     if (!window.confirm('¿Desvincularte de este evento?')) return
     setDeleting(true)
@@ -192,7 +216,7 @@ export default function EventoDetallePage() {
       </div>
     )
   }
-  if (!session) {
+  if (!session && !isGuest) {
     if (typeof window !== 'undefined') window.location.href = '/login'
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -233,12 +257,20 @@ export default function EventoDetallePage() {
           <ArrowLeft className="h-4 w-4" /> Mi Agenda Corporativa
         </Link>
 
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          {evento.tema && (
-            <span className="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border border-white/20 text-white/80 flex items-center gap-1">
-              <Tag className="h-3 w-3" /> {evento.tema}
-            </span>
-          )}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full ${isGuest ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {isGuest ? 'Modo Demo' : 'Evento Corporativo'}
+              </span>
+              {evento.tema && (
+                <span className="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border border-white/20 text-white/80 flex items-center gap-1">
+                  <Tag className="h-3 w-3" /> {evento.tema}
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-bold leading-tight">{evento.nombre}</h1>
+          </div>
           {estadoAsistencia && (
             <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full border ${ESTADO_COLORS[estadoAsistencia]}`}>
               {ESTADO_LABELS[estadoAsistencia]}
@@ -246,9 +278,7 @@ export default function EventoDetallePage() {
           )}
         </div>
 
-        <h1 className="text-3xl font-bold leading-tight mb-5">{evento.nombre}</h1>
-
-        <div className="flex flex-wrap items-center gap-5 text-sm text-blue-200/70">
+        <div className="flex flex-wrap items-center gap-5 text-sm text-blue-200/70 mt-5">
           <span className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 flex-shrink-0" />
             {dateStart} — {dateEnd}
@@ -332,43 +362,49 @@ export default function EventoDetallePage() {
             <div className="bg-slate-50 border-b border-slate-100 px-5 py-4">
               <h3 className="text-sm font-semibold text-slate-700">Mi Asistencia</h3>
             </div>
-            <div className="p-5 space-y-3">
-              <select
-                value={estadoAsistencia ?? ''}
-                onChange={e => handleStatusChange(e.target.value as EstadoAgenda)}
-                disabled={savingStatus}
-                className="w-full text-sm border border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 py-2.5 px-3 font-medium text-slate-700 bg-white shadow-sm transition"
-              >
-                <option value="" disabled>Selecciona tu estado...</option>
-                <option value="evaluacion">Evaluando ir</option>
-                <option value="confirmado_visita">Confirmado (Asistente)</option>
-                <option value="confirmado_auspiciador">Confirmado (Sponsor)</option>
-                <option value="descartado">No me interesa</option>
-              </select>
-
-              {savingStatus && (
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Guardando...
-                </div>
-              )}
-              {savedStatus && (
-                <div className="flex items-center gap-2 text-xs text-emerald-600">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Estado actualizado
-                </div>
-              )}
-
-              {estadoAsistencia && (
-                <button
-                  onClick={handleDesvincular}
-                  disabled={deleting}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-red-500 hover:text-red-700 font-medium py-2 rounded-lg hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
+            <div className="p-6">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Mi Interés en Asistir</label>
+              <div className="space-y-3">
+                <select
+                  disabled={loading || isGuest}
+                  className={`w-full text-sm border-slate-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 py-3 px-4 font-semibold text-slate-700 bg-slate-50 transition-all ${isGuest ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  value={estadoAsistencia || ''}
+                  onChange={(e) => handleStatusChange(e.target.value as EstadoAgenda)}
                 >
-                  {deleting
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Trash2 className="h-3.5 w-3.5" />}
-                  Desvincularme de este evento
-                </button>
-              )}
+                  <option value="" disabled>Selecciona tu estado...</option>
+                  <option value="evaluacion">Evaluando ir</option>
+                  <option value="confirmado_visita">Confirmado (Asistente)</option>
+                  <option value="confirmado_auspiciador">Confirmado (Sponsor)</option>
+                  <option value="descartado">No me interesa</option>
+                </select>
+
+                {savingStatus && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Guardando...
+                  </div>
+                )}
+                {savedStatus && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Estado actualizado
+                  </div>
+                )}
+                {estadoAsistencia && !isGuest && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors mt-2"
+                  >
+                    {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    Desvincularme del evento
+                  </button>
+                )}
+                
+                {isGuest && (
+                  <p className="text-[10px] text-blue-600 font-medium text-center mt-2 px-2">
+                    Inicia sesión con tu cuenta corporativa para gestionar tu asistencia.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -380,14 +416,16 @@ export default function EventoDetallePage() {
             <div className="p-4 space-y-2">
               <button
                 onClick={() => setShareModal(true)}
-                className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 px-4 py-3 text-sm font-medium text-slate-700 hover:text-indigo-700 transition-colors"
+                disabled={isGuest}
+                className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 px-4 py-3 text-sm font-medium text-slate-700 hover:text-indigo-700 transition-colors disabled:opacity-40"
               >
                 <Share2 className="h-4 w-4 text-indigo-500" />
                 Compartir por email
               </button>
               <button
                 onClick={() => downloadIcs(evento)}
-                className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors"
+                disabled={isGuest}
+                className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors disabled:opacity-40"
               >
                 <Download className="h-4 w-4 text-slate-400" />
                 Bajar archivo .ics
@@ -398,27 +436,6 @@ export default function EventoDetallePage() {
               >
                 🗓️ Sincronizar Calendario
               </button>
-            </div>
-          </div>
-
-          {/* Event meta */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 space-y-3">
-            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-              Datos del evento
-            </h3>
-            {loc && (
-              <div className="flex items-start gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-600">{loc}</span>
-              </div>
-            )}
-            <div className="flex items-start gap-2 text-sm">
-              <CalendarDays className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
-              <span className="text-slate-600">{dateStart} — {dateEnd}</span>
-            </div>
-            <div className="flex items-start gap-2 text-sm">
-              <Clock className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
-              <span className="text-slate-600">{durDays} día{durDays !== 1 ? 's' : ''} de duración</span>
             </div>
           </div>
         </div>
@@ -442,7 +459,6 @@ export default function EventoDetallePage() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Preview */}
               <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4">
                 <p className="text-sm font-semibold text-indigo-900">{evento.nombre}</p>
                 <p className="text-xs text-indigo-600 mt-1">{dateStart}{loc ? ` · ${loc}` : ''}</p>

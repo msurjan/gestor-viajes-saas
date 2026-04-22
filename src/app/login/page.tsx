@@ -138,7 +138,7 @@ function LoginContent() {
               <p className="text-sm font-medium text-blue-100">Acceso corporativo</p>
             </div>
             <h1 className="text-xl font-bold text-white mt-1">
-              {isRegistering ? 'Crear Cuenta Demo' : 'Iniciar sesión'}
+              Iniciar sesión
             </h1>
           </div>
 
@@ -150,59 +150,27 @@ function LoginContent() {
                 {/* OAuth Buttons */}
                 <div className="space-y-3 mb-6">
                   <button 
-                    onClick={() => handleOAuthLogin('azure')}
-                    className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
-                  >
-                    <LogIn className="h-4 w-4" /> Entrar con Microsoft
-                  </button>
-                  <button 
                     onClick={() => {
                       localStorage.setItem('isGuest', 'true')
                       router.push('/')
                     }}
-                    className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
+                    className="w-full flex items-center justify-center gap-3 bg-white border-2 border-blue-600 hover:bg-blue-50 text-blue-700 py-3 rounded-xl font-bold transition-all shadow-sm text-sm"
                   >
-                    <Globe className="h-4 w-4 text-blue-500" /> Explorar como Visita
+                    <Globe className="h-4 w-4" /> Acceso Versión Demo (Gratis)
                   </button>
                 </div>
 
                 <div className="relative flex items-center py-2 mb-4">
                   <div className="flex-grow border-t border-slate-200"></div>
-                  <span className="flex-shrink-0 mx-4 text-slate-400 text-xs">o con email</span>
+                  <span className="flex-shrink-0 mx-4 text-slate-400 text-xs">o Acceso Corporativo</span>
                   <div className="flex-grow border-t border-slate-200"></div>
                 </div>
               </>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isRegistering && (
-                <>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-slate-600">Nombre completo</label>
-                    <input
-                      type="text"
-                      value={nombre}
-                      onChange={e => setNombre(e.target.value)}
-                      placeholder="Marcelo Surjan"
-                      required
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-slate-600">Empresa</label>
-                    <input
-                      type="text"
-                      value={empresa}
-                      onChange={e => setEmpresa(e.target.value)}
-                      placeholder="Geológica"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition"
-                    />
-                  </div>
-                </>
-              )}
-              
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-600">Email</label>
+                <label className="block text-xs font-medium text-slate-600">Email Corporativo</label>
                 <input
                   type="email"
                   value={email}
@@ -228,18 +196,7 @@ function LoginContent() {
               {error && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-sm text-red-700">
                   <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  <div>
-                    {error}
-                    {error.includes('¿Quieres crear una cuenta demo?') && (
-                      <button 
-                        type="button"
-                        onClick={() => setIsRegistering(true)}
-                        className="block mt-1 font-bold underline"
-                      >
-                        Sí, crear cuenta demo gratuita
-                      </button>
-                    )}
-                  </div>
+                  <div>{error}</div>
                 </div>
               )}
 
@@ -249,19 +206,15 @@ function LoginContent() {
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0c1e3c] py-3 text-sm font-bold text-white hover:bg-blue-900 disabled:opacity-60 transition-colors shadow-sm mt-2"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? 'Procesando…' : (isRegistering ? 'Crear Demo' : 'Ingresar')}
+                {loading ? 'Procesando…' : 'Ingresar'}
               </button>
 
-              <div className="text-center mt-4">
+              <div className="mt-6 pt-6 border-t border-slate-100">
                 <button 
-                  type="button"
-                  onClick={() => {
-                    setIsRegistering(!isRegistering)
-                    setError(null)
-                  }}
-                  className="text-xs text-blue-600 hover:underline"
+                  onClick={() => handleOAuthLogin('azure')}
+                  className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
                 >
-                  {isRegistering ? '¿Ya tienes cuenta? Iniciar sesión' : '¿Eres nuevo? Prueba la versión demo'}
+                  <LogIn className="h-4 w-4" /> Entrar con Microsoft
                 </button>
               </div>
             </form>

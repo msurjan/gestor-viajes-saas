@@ -351,8 +351,8 @@ export default function DashboardPage() {
             <Globe className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-blue-900">Modo Invitado (Lectura)</p>
-            <p className="text-xs text-blue-700">Estás explorando el catálogo global. Para guardar eventos en tu agenda personal, por favor inicia sesión o crea una cuenta.</p>
+            <p className="text-sm font-bold text-blue-900">Versión Demo (Solo Lectura)</p>
+            <p className="text-xs text-blue-700">Estás explorando el catálogo global de eventos. Para gestionar tu asistencia, descargar calendarios o usar IA, por favor inicia sesión con tu cuenta corporativa.</p>
           </div>
           <Link 
             href="/login" 
@@ -632,22 +632,25 @@ export default function DashboardPage() {
               {/* Botones de acción */}
               <div className="border-t border-slate-100 pt-5 flex items-center justify-between">
                 <div className="flex flex-wrap gap-2">
-                  <span title={isDemo ? 'Solo disponible en plan B2B' : undefined} className="inline-flex">
+                  <span title={(isDemo || isGuest) ? 'Solo disponible en plan B2B' : undefined} className="inline-flex">
                     <button
                       onClick={handleAutoScheduleGoogle}
-                      disabled={isDemo}
+                      disabled={isDemo || isGuest}
                       className="flex items-center gap-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 text-xs font-medium transition-colors border border-blue-200 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                     >
                       🗓️ Sincronizar Calendario
                     </button>
                   </span>
-                  <button
-                    onClick={() => downloadIcs(modal.data)}
-                    className="flex items-center gap-2 rounded-lg bg-white text-slate-700 hover:bg-slate-50 px-3 py-2 text-xs font-medium transition-colors border border-slate-200 shadow-sm"
-                  >
-                    <Download className="h-3.5 w-3.5 text-slate-400" />
-                    Bajar .ics
-                  </button>
+                  <span title={isGuest ? 'Inicia sesión para descargar' : undefined} className="inline-flex">
+                    <button
+                      onClick={() => downloadIcs(modal.data)}
+                      disabled={isGuest}
+                      className="flex items-center gap-2 rounded-lg bg-white text-slate-700 hover:bg-slate-50 px-3 py-2 text-xs font-medium transition-colors border border-slate-200 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    >
+                      <Download className="h-3.5 w-3.5 text-slate-400" />
+                      Bajar .ics
+                    </button>
+                  </span>
                   {modal.type === 'agenda' && (
                     <Link
                       href={`/eventos/${modal.data.id}`}
