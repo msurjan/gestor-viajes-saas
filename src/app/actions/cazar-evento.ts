@@ -16,6 +16,8 @@ export type EventoBorrador = {
   lat: number
   lng: number
   fuente_url: string
+  costo_entrada: string
+  imagen_url: string
   confianza: number      // 0 – 1
 }
 
@@ -46,6 +48,8 @@ Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY thi
       "lat": 0.0,
       "lng": 0.0,
       "fuente_url": "https://official-website.com",
+      "costo_entrada": "Standard Ticket: $495 USD",
+      "imagen_url": "https://official-website.com/banner.jpg",
       "confianza": 0.9
     }
   ]
@@ -64,7 +68,9 @@ const MOCK_DB: Record<string, EventoBorrador[]> = {
       fecha_inicio: '2027-03-07', fecha_fin: '2027-03-10',
       ciudad: 'Toronto', pais: 'Canada',
       lat: 43.6532, lng: -79.3832,
-      fuente_url: 'https://www.pdac.ca', confianza: 0.9,
+      fuente_url: 'https://www.pdac.ca',
+      costo_entrada: 'Standard: ~$500 CAD', imagen_url: '',
+      confianza: 0.9,
     },
   ],
   adipec: [
@@ -74,7 +80,9 @@ const MOCK_DB: Record<string, EventoBorrador[]> = {
       fecha_inicio: '2026-11-09', fecha_fin: '2026-11-12',
       ciudad: 'Abu Dhabi', pais: 'UAE',
       lat: 24.4539, lng: 54.3773,
-      fuente_url: 'https://www.adipec.com', confianza: 0.88,
+      fuente_url: 'https://www.adipec.com',
+      costo_entrada: 'Free for delegates', imagen_url: '',
+      confianza: 0.88,
     },
   ],
   davos: [
@@ -84,7 +92,9 @@ const MOCK_DB: Record<string, EventoBorrador[]> = {
       fecha_inicio: '2027-01-19', fecha_fin: '2027-01-23',
       ciudad: 'Davos', pais: 'Switzerland',
       lat: 46.8027, lng: 9.8359,
-      fuente_url: 'https://www.weforum.org', confianza: 0.92,
+      fuente_url: 'https://www.weforum.org',
+      costo_entrada: 'By invitation only', imagen_url: '',
+      confianza: 0.92,
     },
   ],
   coaltrans: [
@@ -94,7 +104,9 @@ const MOCK_DB: Record<string, EventoBorrador[]> = {
       fecha_inicio: '2026-09-14', fecha_fin: '2026-09-16',
       ciudad: 'Athens', pais: 'Greece',
       lat: 37.9838, lng: 23.7275,
-      fuente_url: 'https://www.coaltrans.com', confianza: 0.82,
+      fuente_url: 'https://www.coaltrans.com',
+      costo_entrada: 'Standard: ~$2,500 USD', imagen_url: '',
+      confianza: 0.82,
     },
   ],
 }
@@ -108,7 +120,7 @@ function mockSearch(query: string): EventoBorrador[] {
   }
   return [
     {
-      id: `draft-${Date.now()}-0`,
+      id:           `draft-${Date.now()}-0`,
       nombre:       `${query.toUpperCase()} 2027`,
       descripcion:  `Industry conference related to "${query}". (Datos simulados — configura GEMINI_API_KEY para resultados reales con búsqueda en Google.)`,
       tema:         'Otro',
@@ -119,6 +131,8 @@ function mockSearch(query: string): EventoBorrador[] {
       lat:          19.4326,
       lng:          -99.1332,
       fuente_url:   'https://example.com',
+      costo_entrada: '',
+      imagen_url:   '',
       confianza:    0.3,
     },
   ]

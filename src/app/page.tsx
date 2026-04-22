@@ -8,8 +8,9 @@ import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
 import type { EventInput } from '@fullcalendar/core'
 import Link from 'next/link'
 import {
-  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight
+  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight, LayoutGrid
 } from 'lucide-react'
+import MarketplaceGrid from '@/components/MarketplaceGrid'
 
 const CalendarioWrapper = dynamic(() => import('@/components/CalendarioWrapper'), { ssr: false, loading: () => <CalSkeleton /> })
 const MapaEventos = dynamic(() => import('@/components/MapaEventos'), { ssr: false, loading: () => <CalSkeleton /> })
@@ -59,6 +60,7 @@ function downloadIcs(e: EventoBorrador | EventoConAsistencia) {
 export default function DashboardPage() {
   const [session, setSession] = useState<any>(null)
   const [sessionLoaded, setSessionLoaded] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
   const [eventos, setEventos] = useState<EventoConAsistencia[]>([])
   const [borradores, setBorradores] = useState<EventoBorrador[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,7 +73,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [filtrosTema, setFiltrosTema] = useState<string[]>([])
-  const [vistaActual, setVistaActual] = useState<'calendario' | 'mapa'>('calendario')
+  const [vistaActual, setVistaActual] = useState<'calendario' | 'mapa' | 'marketplace'>('calendario')
   
   const [noticiasModal, setNoticiasModal] = useState<any[]>([])
   const [loadingNoticias, setLoadingNoticias] = useState(false)
@@ -79,6 +81,9 @@ export default function DashboardPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      if (session) {
+        checkDemoStatus(session.user.id)
+      }
       setSessionLoaded(true)
     })
 
@@ -86,11 +91,21 @@ export default function DashboardPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      if (session) {
+        checkDemoStatus(session.user.id)
+      }
       setSessionLoaded(true)
     })
 
     return () => subscription.unsubscribe()
   }, [])
+
+  async function checkDemoStatus(userId: string) {
+    const { data } = await supabase.from('perfiles_usuarios').select('es_demo').eq('user_id', userId).single()
+    if (data) {
+      setIsDemo(!!data.es_demo)
+    }
+  }
 
   const fetchEventos = useCallback(async () => {
     if (!session?.user?.id) {
@@ -201,6 +216,13 @@ export default function DashboardPage() {
 
   async function handleStatusChange(nuevoEstado: EstadoAgenda) {
     if (!modal || !session?.user) return
+    
+    if (isDemo) {
+      alert("Estás en modo DEMO. En esta versión de prueba no se guardan tus preferencias de asistencia en la cuenta.")
+      setModal(null)
+      return
+    }
+
     setSavingStatus(true)
 
     try {
@@ -217,7 +239,9 @@ export default function DashboardPage() {
           lat: b.lat,
           lng: b.lng,
           fuente_url: b.fuente_url,
-          tema: b.tema
+          tema: b.tema,
+          costo_entrada: b.costo_entrada,
+          imagen_url: b.imagen_url
         }).select().single()
 
         if (errEv || !ev) throw errEv
@@ -300,6 +324,21 @@ export default function DashboardPage() {
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto">
       
+      {isDemo && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 shadow-sm mb-4">
+          <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+            <Tag className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-900">Versión Demo Activada</p>
+            <p className="text-xs text-amber-700">Explora el catálogo y el radar de prensa. Las preferencias de eventos no se guardarán en esta cuenta gratuita.</p>
+          </div>
+          <button className="text-xs font-bold text-amber-800 bg-amber-200/50 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors">
+            Adquirir Plan B2B
+          </button>
+        </div>
+      )}
+      
       {/* ── Header & Cazador ────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -351,26 +390,40 @@ export default function DashboardPage() {
             </div>
 
             <div className="bg-slate-100 p-1 rounded-lg inline-flex items-center self-start">
-              <button 
+              <button
                 onClick={() => setVistaActual('calendario')}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${vistaActual === 'calendario' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <CalendarDays className="h-4 w-4" /> Calendario
               </button>
-              <button 
+              <button
                 onClick={() => setVistaActual('mapa')}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${vistaActual === 'mapa' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <MapIcon className="h-4 w-4" /> Mapa
               </button>
+              <button
+                onClick={() => setVistaActual('marketplace')}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${vistaActual === 'marketplace' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <LayoutGrid className="h-4 w-4" /> Marketplace
+              </button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden p-1 min-h-[600px] flex flex-col">
+          <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ${vistaActual === 'marketplace' ? '' : 'p-1 min-h-[600px]'} flex flex-col`}>
             {loading ? <CalSkeleton /> : (
-              vistaActual === 'calendario' 
+              vistaActual === 'calendario'
                 ? <CalendarioWrapper events={calendarEvents} onEventClick={handleEventClick} />
-                : <MapaEventos events={calendarEvents} onEventClick={handleEventClick} />
+                : vistaActual === 'mapa'
+                ? <MapaEventos events={calendarEvents} onEventClick={handleEventClick} />
+                : <MarketplaceGrid
+                    eventos={eventosFiltrados}
+                    borradores={borradoresFiltrados}
+                    onEventoClick={e => setModal({ type: 'agenda', data: e })}
+                    onBorradorClick={b => setModal({ type: 'borrador', data: b })}
+                    isDemo={isDemo}
+                  />
             )}
           </div>
         </div>
