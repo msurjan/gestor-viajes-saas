@@ -28,11 +28,11 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-[#0c1e3c] text-white">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden sm:flex w-20 lg:w-64 flex-col bg-[#0c1e3c] text-white transition-all duration-300 ease-in-out">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-        <Globe className="h-7 w-7 text-blue-400" strokeWidth={1.5} />
-        <div className="leading-tight">
+      <div className="flex h-16 items-center justify-center lg:justify-start lg:gap-3 border-b border-white/10 lg:px-6 px-4">
+        <Globe className="h-7 w-7 text-blue-400 flex-shrink-0" strokeWidth={1.5} />
+        <div className="leading-tight hidden lg:block overflow-hidden whitespace-nowrap">
           <p className="text-sm font-semibold tracking-wide">Agenda Corporativa</p>
           <p className="text-[10px] text-blue-300/70 uppercase tracking-widest">
             by Agenda Corporativa
@@ -48,14 +48,15 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              title={label}
+              className={`flex items-center justify-center lg:justify-start gap-3 rounded-lg lg:px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
                   ? 'bg-blue-600 text-white'
                   : 'text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
               }`}
             >
-              <Icon className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
-              {label}
+              <Icon className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+              <span className="hidden lg:block overflow-hidden whitespace-nowrap">{label}</span>
             </Link>
           )
         })}
@@ -65,12 +66,13 @@ export default function Sidebar() {
       <div className="border-t border-white/10 px-3 py-4 space-y-3">
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-100/70 hover:bg-white/[0.08] hover:text-white transition-colors"
+          title="Cerrar sesión"
+          className="flex w-full items-center justify-center lg:justify-start gap-3 rounded-lg lg:px-3 py-2.5 text-sm font-medium text-blue-100/70 hover:bg-white/[0.08] hover:text-white transition-colors"
         >
-          <LogOut className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
-          Cerrar sesión
+          <LogOut className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+          <span className="hidden lg:block overflow-hidden whitespace-nowrap">Cerrar sesión</span>
         </button>
-        <p className="text-[11px] text-blue-200/30 px-3">MVP v0.1 · 2026</p>
+        <p className="text-[11px] text-blue-200/30 px-3 hidden lg:block">MVP v0.2 · 2026</p>
       </div>
     </aside>
   )
