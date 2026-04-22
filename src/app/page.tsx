@@ -10,7 +10,7 @@ import Link from 'next/link'
 import {
   Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight, LayoutGrid
 } from 'lucide-react'
-import MarketplaceGrid from '@/components/MarketplaceGrid'
+import Marketplace from '@/components/Marketplace'
 
 const CalendarioWrapper = dynamic(() => import('@/components/CalendarioWrapper'), { ssr: false, loading: () => <CalSkeleton /> })
 const MapaEventos = dynamic(() => import('@/components/MapaEventos'), { ssr: false, loading: () => <CalSkeleton /> })
@@ -229,20 +229,21 @@ export default function DashboardPage() {
       if (modal.type === 'borrador') {
         const b = modal.data
         // 1. Insertar evento en catálogo global
-        const { data: ev, error: errEv } = await supabase.from('eventos_agenda').insert({
-          nombre: b.nombre,
-          descripcion: b.descripcion,
-          fecha_inicio: b.fecha_inicio,
-          fecha_fin: b.fecha_fin,
-          ciudad: b.ciudad,
-          pais: b.pais,
-          lat: b.lat,
-          lng: b.lng,
-          fuente_url: b.fuente_url,
-          tema: b.tema,
-          costo_entrada: b.costo_entrada,
-          imagen_url: b.imagen_url
-        }).select().single()
+        const insertData: any = {
+            nombre: b.nombre,
+            descripcion: b.descripcion,
+            fecha_inicio: b.fecha_inicio,
+            fecha_fin: b.fecha_fin,
+            ciudad: b.ciudad,
+            pais: b.pais,
+            lat: b.lat,
+            lng: b.lng,
+            fuente_url: b.fuente_url,
+            tema: b.tema,
+            ...(b.costo_entrada ? { costo_entrada: b.costo_entrada } : {}),
+            ...(b.imagen_url ? { imagen_url: b.imagen_url } : {}),
+        }
+        const { data: ev, error: errEv } = await supabase.from('eventos_agenda').insert(insertData).select().single()
 
         if (errEv || !ev) throw errEv
 
@@ -417,13 +418,7 @@ export default function DashboardPage() {
                 ? <CalendarioWrapper events={calendarEvents} onEventClick={handleEventClick} />
                 : vistaActual === 'mapa'
                 ? <MapaEventos events={calendarEvents} onEventClick={handleEventClick} />
-                : <MarketplaceGrid
-                    eventos={eventosFiltrados}
-                    borradores={borradoresFiltrados}
-                    onEventoClick={e => setModal({ type: 'agenda', data: e })}
-                    onBorradorClick={b => setModal({ type: 'borrador', data: b })}
-                    isDemo={isDemo}
-                  />
+                : <Marketplace eventos={eventosFiltrados} isDemo={isDemo} />
             )}
           </div>
         </div>
