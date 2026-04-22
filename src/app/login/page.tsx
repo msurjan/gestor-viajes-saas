@@ -1,16 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { Globe, Loader2, AlertCircle, Lock } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Globe, Loader2, AlertCircle, Lock, LogIn } from 'lucide-react'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState<string | null>(null)
+
+  useEffect(() => {
+    // Detectar errores de OAuth devueltos en la URL (ej: ?error_description=...)
+    const errorDesc = searchParams.get('error_description')
+    if (errorDesc) {
+      setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')))
+    }
+    
+    // Si viene un hash con error (flujo implícito)
+    if (typeof window !== 'undefined' && window.location.hash.includes('error_description')) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const hashErrorDesc = hashParams.get('error_description')
+      if (hashErrorDesc) setError(decodeURIComponent(hashErrorDesc.replace(/\+/g, ' ')))
+    }
+  }, [searchParams])
+
+  async function handleOAuthLogin(provider: 'google' | 'azure') {
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        scopes: provider === 'google' 
+          ? 'https://www.googleapis.com/auth/calendar.events'
+          : 'Calendars.ReadWrite', // Scope para Microsoft Graph API
+        redirectTo: window.location.origin
+      }
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,7 +77,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center gap-3 mb-8">
           <Globe className="h-9 w-9 text-blue-400" strokeWidth={1.5} />
           <div className="leading-tight">
-            <p className="text-white font-semibold tracking-wide text-lg">Gestor Viajes</p>
+            <p className="text-white font-semibold tracking-wide text-lg">Agenda B2B</p>
             <p className="text-blue-300/60 text-[10px] uppercase tracking-widest">by Graiph</p>
           </div>
         </div>
@@ -59,31 +95,45 @@ export default function LoginPage() {
 
           {/* Form */}
           <div className="px-8 py-7">
+            
+            {/* OAuth Buttons */}
+            <div className="space-y-3 mb-6">
+              <button 
+                onClick={() => handleOAuthLogin('azure')}
+                className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
+              >
+                <LogIn className="h-4 w-4" /> Entrar con Microsoft
+              </button>
+              <button 
+                onClick={() => handleOAuthLogin('google')}
+                className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
+              >
+                <LogIn className="h-4 w-4" /> Entrar con Google
+              </button>
+            </div>
+
+            <div className="relative flex items-center py-2 mb-4">
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink-0 mx-4 text-slate-400 text-xs">o con email</span>
+              <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-600">
-                  Email corporativo
-                </label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  required
-                  autoFocus
                   placeholder="usuario@graiph.ai"
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-600">
-                  Contraseña
-                </label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  required
                   placeholder="••••••••"
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 transition"
                 />
@@ -102,14 +152,14 @@ export default function LoginPage() {
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0c1e3c] py-3 text-sm font-bold text-white hover:bg-blue-900 disabled:opacity-60 transition-colors shadow-sm mt-2"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? 'Ingresando…' : 'Ingresar al sistema'}
+                {loading ? 'Ingresando…' : 'Ingresar'}
               </button>
             </form>
           </div>
         </div>
 
         <p className="text-center text-xs text-blue-200/30 mt-6">
-          MVP v0.1 · 2026 · Graiph
+          MVP v0.2 · 2026 · Graiph
         </p>
       </div>
     </div>
