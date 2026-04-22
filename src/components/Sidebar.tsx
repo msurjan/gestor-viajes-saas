@@ -9,12 +9,12 @@ import {
   Globe,
   Radar,
   LogOut,
+  UserCircle,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/',        label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/eventos', label: 'Eventos',   icon: CalendarDays    },
-  { href: '/radar',   label: 'Radar IA',  icon: Radar           },
+  { href: '/perfil',  label: 'Mi Perfil', icon: UserCircle },
 ]
 
 export default function Sidebar() {

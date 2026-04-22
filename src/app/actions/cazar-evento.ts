@@ -8,10 +8,13 @@ export type EventoBorrador = {
   id: string
   nombre: string
   descripcion: string
+  tema: string
   fecha_inicio: string   // YYYY-MM-DD
   fecha_fin: string      // YYYY-MM-DD
   ciudad: string
   pais: string
+  lat: number
+  lng: number
   fuente_url: string
   confianza: number      // 0 – 1
 }
@@ -34,11 +37,14 @@ Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY thi
   "eventos": [
     {
       "nombre": "Full official event name",
-      "descripcion": "One sentence describing the event.",
+      "descripcion": "Official and detailed thematic description of the event.",
+      "tema": "One of: Innovación, Maquinaria, Finanzas, Geología, Energía, Minería, Otro",
       "fecha_inicio": "YYYY-MM-DD",
       "fecha_fin": "YYYY-MM-DD",
       "ciudad": "City",
       "pais": "Country",
+      "lat": 0.0,
+      "lng": 0.0,
       "fuente_url": "https://official-website.com",
       "confianza": 0.9
     }
@@ -54,32 +60,40 @@ const MOCK_DB: Record<string, EventoBorrador[]> = {
   pdac: [
     {
       id: '', nombre: 'PDAC 2027', descripcion: 'Premier mineral exploration and mining convention.',
+      tema: 'Minería',
       fecha_inicio: '2027-03-07', fecha_fin: '2027-03-10',
       ciudad: 'Toronto', pais: 'Canada',
+      lat: 43.6532, lng: -79.3832,
       fuente_url: 'https://www.pdac.ca', confianza: 0.9,
     },
   ],
   adipec: [
     {
       id: '', nombre: 'ADIPEC 2026', descripcion: 'International petroleum exhibition & conference.',
+      tema: 'Energía',
       fecha_inicio: '2026-11-09', fecha_fin: '2026-11-12',
       ciudad: 'Abu Dhabi', pais: 'UAE',
+      lat: 24.4539, lng: 54.3773,
       fuente_url: 'https://www.adipec.com', confianza: 0.88,
     },
   ],
   davos: [
     {
       id: '', nombre: 'World Economic Forum Annual Meeting 2027', descripcion: 'Annual Davos gathering of world leaders.',
+      tema: 'Finanzas',
       fecha_inicio: '2027-01-19', fecha_fin: '2027-01-23',
       ciudad: 'Davos', pais: 'Switzerland',
+      lat: 46.8027, lng: 9.8359,
       fuente_url: 'https://www.weforum.org', confianza: 0.92,
     },
   ],
   coaltrans: [
     {
       id: '', nombre: 'Coaltrans World Coal Conference 2026', descripcion: 'Global coal industry conference.',
+      tema: 'Minería',
       fecha_inicio: '2026-09-14', fecha_fin: '2026-09-16',
       ciudad: 'Athens', pais: 'Greece',
+      lat: 37.9838, lng: 23.7275,
       fuente_url: 'https://www.coaltrans.com', confianza: 0.82,
     },
   ],
@@ -97,10 +111,13 @@ function mockSearch(query: string): EventoBorrador[] {
       id: `draft-${Date.now()}-0`,
       nombre:       `${query.toUpperCase()} 2027`,
       descripcion:  `Industry conference related to "${query}". (Datos simulados — configura GEMINI_API_KEY para resultados reales con búsqueda en Google.)`,
+      tema:         'Otro',
       fecha_inicio: '2027-04-15',
       fecha_fin:    '2027-04-18',
       ciudad:       'Ciudad de México',
       pais:         'Mexico',
+      lat:          19.4326,
+      lng:          -99.1332,
       fuente_url:   'https://example.com',
       confianza:    0.3,
     },
