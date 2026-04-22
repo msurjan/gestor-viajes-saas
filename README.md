@@ -1,4 +1,4 @@
-# Gestor Viajes · Agenda B2B by Graiph
+# Agenda Corporativa · Agenda Corporativa
 
 Plataforma de gestión de eventos y viajes corporativos. Permite a equipos B2B descubrir, catalogar, y gestionar su asistencia a eventos internacionales mediante IA (Gemini + Google Search).
 

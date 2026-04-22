@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
-  title: 'Gestor Viajes · Graiph',
+  title: 'Agenda Corporativa · Agenda Corporativa',
   description: 'Plataforma de gestión de eventos y viajes corporativos',
 }
 

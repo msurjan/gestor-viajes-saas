@@ -1,7 +1,7 @@
-# Instrucciones para ClaudeCode - Gestor Viajes
+# Instrucciones para ClaudeCode - Agenda Corporativa
 
 **Contexto General para Claude:**
-"Hola Claude. Estamos construyendo 'Gestor Viajes', una plataforma para gestionar visitas a terreno, eventos mineros y congresos en Latam. Nuestro stack es Next.js (App Router), Tailwind CSS y Supabase (PostgreSQL). Ya tengo el esqueleto inicial de Next.js. El objetivo es crear la interfaz y conectar la base de datos para los módulos de Eventos, Logística, Proveedores, Gastos y Conocimiento."
+"Hola Claude. Estamos construyendo 'Agenda Corporativa', una plataforma para gestionar visitas a terreno, eventos mineros y congresos en Latam. Nuestro stack es Next.js (App Router), Tailwind CSS y Supabase (PostgreSQL). Ya tengo el esqueleto inicial de Next.js. El objetivo es crear la interfaz y conectar la base de datos para los módulos de Eventos, Logística, Proveedores, Gastos y Conocimiento."
 
 ## Paso 1: Configuración de Supabase
 1. **Pídele a ClaudeCode:**

@@ -33,9 +33,9 @@ export default function Sidebar() {
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
         <Globe className="h-7 w-7 text-blue-400" strokeWidth={1.5} />
         <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-wide">Gestor Viajes</p>
+          <p className="text-sm font-semibold tracking-wide">Agenda Corporativa</p>
           <p className="text-[10px] text-blue-300/70 uppercase tracking-widest">
-            by Graiph
+            by Agenda Corporativa
           </p>
         </div>
       </div>

@@ -332,7 +332,7 @@ export default function PerfilPage() {
                   type="text"
                   value={empNombre}
                   onChange={e => setEmpNombre(e.target.value)}
-                  placeholder="ej. Graiph S.A."
+                  placeholder="ej. Empresa S.A."
                   className={inp}
                 />
               </div>
