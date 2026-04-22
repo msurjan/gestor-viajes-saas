@@ -10,6 +10,7 @@ import {
   Globe,
   Radar,
   LogOut,
+  LogIn,
   UserCircle,
 } from 'lucide-react'
 

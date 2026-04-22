@@ -114,6 +114,21 @@ export type GastoInsert = Omit<Gasto, 'id' | 'created_at' | 'updated_at'>
 // Tipos del módulo de radar de precios (cron job)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface ReportePrecioComunidad {
+  id: string
+  evento_id: string
+  user_id?: string
+  categoria: 'Visitante' | 'Expositor (Stand)' | 'Patrocinador' | 'Membresía'
+  detalle: string
+  monto: number
+  moneda: string
+  unidad: 'persona' | 'm2' | 'total'
+  fecha_reporte: string
+  fuente_url?: string
+  comentario?: string
+  created_at: string
+}
+
 export type TipoTracking = 'vuelo' | 'hotel'
 
 export interface RadarEvento {

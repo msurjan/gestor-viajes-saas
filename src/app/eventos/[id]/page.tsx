@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useParams, useSearchParams, usePathname } from 'next/navigation'
+import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { EventoAgenda, EstadoAgenda, NoticiaEvento } from '@/types/database'
@@ -52,8 +51,8 @@ function downloadIcs(e: EventoAgenda) {
   URL.revokeObjectURL(url)
 }
 
-export default function EventoDetallePage() {
-  const params = useParams<{ id: string }>()
+export default function EventoDetallePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const params = use(paramsPromise)
   const eventoId = params?.id
 
   const [session, setSession] = useState<any>(null)
@@ -73,10 +72,15 @@ export default function EventoDetallePage() {
   const [shareModal, setShareModal] = useState(false)
   const [shareEmail, setShareEmail] = useState('')
   const [shareNote, setShareNote] = useState('')
+  const [tabActual, setTabActual] = useState<'descripcion' | 'prensa'>('descripcion')
 
   async function checkDemoStatus(userId: string) {
-    const { data } = await supabase.from('perfiles_usuarios').select('es_demo').eq('user_id', userId).single()
-    if (data) setIsDemo(!!data.es_demo)
+    try {
+      const { data } = await supabase.from('perfiles_usuarios').select('es_demo').eq('user_id', userId).maybeSingle()
+      if (data) setIsDemo(!!data.es_demo)
+    } catch (e) {
+      console.error('Error checking demo status:', e)
+    }
   }
 
   // Auth
@@ -93,6 +97,7 @@ export default function EventoDetallePage() {
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
       setSession(s)
+      if (s) checkDemoStatus(s.user.id)
       setSessionLoaded(true)
     })
     return () => subscription.unsubscribe()
@@ -101,43 +106,39 @@ export default function EventoDetallePage() {
   const fetchData = useCallback(async () => {
     if (!eventoId || (!session?.user?.id && !isGuest)) return
     setLoading(true)
-    
-    const fetchPromises: any[] = [
-      supabase.from('eventos_agenda').select('*').eq('id', eventoId).maybeSingle()
-    ]
 
-    if (session?.user?.id) {
-      fetchPromises.push(
+    try {
+      const [{ data: ev, error: evErr }, { data: asist }, { data: news }] = await Promise.all([
+        supabase.from('eventos_agenda').select('*').eq('id', eventoId).maybeSingle(),
+        session?.user?.id
+          ? supabase
+              .from('asistencias_eventos')
+              .select('estado_asistencia')
+              .eq('user_id', session.user.id)
+              .eq('evento_id', eventoId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
         supabase
-          .from('asistencias_eventos')
-          .select('estado_asistencia')
-          .eq('user_id', session.user.id)
+          .from('noticias_eventos')
+          .select('*')
           .eq('evento_id', eventoId)
-          .maybeSingle()
-      )
-    } else {
-      fetchPromises.push(Promise.resolve({ data: null }))
-    }
+          .order('fecha_publicacion', { ascending: false })
+          .limit(5),
+      ])
 
-    fetchPromises.push(
-      supabase
-        .from('noticias_eventos')
-        .select('*')
-        .eq('evento_id', eventoId)
-        .order('fecha_publicacion', { ascending: false })
-        .limit(5)
-    )
-
-    const [{ data: ev }, { data: asist }, { data: news }] = await Promise.all(fetchPromises)
-
-    if (!ev) {
+      if (evErr || !ev) {
+        setNotFound(true)
+      } else {
+        setEvento(ev)
+        setEstadoAsistencia((asist as any)?.estado_asistencia ?? null)
+        setNoticias((news as any) ?? [])
+      }
+    } catch (e) {
+      console.error('Error fetching data:', e)
       setNotFound(true)
-    } else {
-      setEvento(ev)
-      setEstadoAsistencia(asist?.estado_asistencia ?? null)
-      setNoticias(news ?? [])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [eventoId, session, isGuest])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -209,26 +210,30 @@ export default function EventoDetallePage() {
   }
 
   // Guards
-  if (!sessionLoaded || (sessionLoaded && session && loading)) {
+  if (!sessionLoaded || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
       </div>
     )
   }
+
   if (!session && !isGuest) {
     if (typeof window !== 'undefined') window.location.href = '/login'
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-      </div>
-    )
+    return null
   }
+
   if (notFound || !evento) {
     return (
-      <div className="p-8 flex flex-col items-center gap-4">
-        <p className="text-slate-500 text-sm">Evento no encontrado.</p>
-        <Link href="/" className="text-indigo-600 hover:underline text-sm">← Volver al Dashboard</Link>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8 text-center">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 max-w-sm w-full">
+          <div className="text-4xl mb-4">🔍</div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Evento no encontrado</h2>
+          <p className="text-slate-500 text-sm mb-6">El evento que buscas no existe o ha sido eliminado del catálogo.</p>
+          <Link href="/" className="inline-block bg-[#0c1e3c] text-white px-6 py-2 rounded-xl text-sm font-semibold hover:bg-blue-900 transition-colors">
+            Volver al Dashboard
+          </Link>
+        </div>
       </div>
     )
   }
@@ -296,60 +301,75 @@ export default function EventoDetallePage() {
 
       {/* ── Content ────────────────────────────────────────────── */}
       <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 bg-slate-50 min-h-[calc(100vh-280px)]">
-        {/* Left: description + news */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Description */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-              <Globe className="h-4 w-4" /> Descripción Oficial
-            </h2>
-            <p className="text-sm text-slate-700 leading-relaxed">
-              {evento.descripcion || 'Sin descripción disponible.'}
-            </p>
-            {evento.fuente_url && (
-              <a
-                href={evento.fuente_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 mt-4 transition-colors"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Sitio oficial del evento
-              </a>
-            )}
-          </div>
-
-          {/* News radar */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
-              <Newspaper className="h-4 w-4 text-slate-400" />
-              <h2 className="text-sm font-semibold text-slate-700">Radar de Prensa Automatizado</h2>
+        {/* Left: tabs */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex border-b border-slate-100">
+              {([
+                { key: 'descripcion', label: 'Descripción', Icon: Globe },
+                { key: 'prensa',      label: 'Radar de Prensa', Icon: Newspaper },
+              ] as const).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setTabActual(key)}
+                  className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                    tabActual === key
+                      ? 'border-indigo-500 text-indigo-700 bg-indigo-50/40'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
             </div>
+
             <div className="p-6">
-              {noticias.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">
-                  No hay noticias recientes en la base de datos para este evento.
-                </p>
-              ) : (
-                <div className="space-y-5 divide-y divide-slate-50">
-                  {noticias.map(n => (
-                    <div key={n.id} className="pt-5 first:pt-0">
-                      <a
-                        href={n.url_fuente}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold text-indigo-900 hover:text-indigo-600 hover:underline leading-tight block text-sm"
-                      >
-                        {n.titular}
-                      </a>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-3">{n.resumen}</p>
-                      <span className="text-[10px] font-medium text-slate-400 block mt-1.5">
-                        {new Date(n.fecha_publicacion).toLocaleDateString('es-MX', {
-                          day: '2-digit', month: 'long', year: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              {tabActual === 'descripcion' && (
+                <>
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    {evento.descripcion || 'Sin descripción disponible.'}
+                  </p>
+                  {evento.fuente_url && (
+                    <a
+                      href={evento.fuente_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 mt-4 transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> Sitio oficial del evento
+                    </a>
+                  )}
+                </>
+              )}
+
+              {tabActual === 'prensa' && (
+                noticias.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">
+                    No hay noticias recientes en la base de datos para este evento.
+                  </p>
+                ) : (
+                  <div className="space-y-5 divide-y divide-slate-50">
+                    {noticias.map(n => (
+                      <div key={n.id} className="pt-5 first:pt-0">
+                        <a
+                          href={n.url_fuente}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-indigo-900 hover:text-indigo-600 hover:underline leading-tight block text-sm"
+                        >
+                          {n.titular}
+                        </a>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-3">{n.resumen}</p>
+                        <span className="text-[10px] font-medium text-slate-400 block mt-1.5">
+                          {new Date(n.fecha_publicacion).toLocaleDateString('es-MX', {
+                            day: '2-digit', month: 'long', year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -357,7 +377,6 @@ export default function EventoDetallePage() {
 
         {/* Right: attendance + actions */}
         <div className="space-y-4">
-          {/* Attendance */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="bg-slate-50 border-b border-slate-100 px-5 py-4">
               <h3 className="text-sm font-semibold text-slate-700">Mi Asistencia</h3>
@@ -408,7 +427,6 @@ export default function EventoDetallePage() {
             </div>
           </div>
 
-          {/* Quick actions */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="bg-slate-50 border-b border-slate-100 px-5 py-4">
               <h3 className="text-sm font-semibold text-slate-700">Acciones</h3>
@@ -423,7 +441,7 @@ export default function EventoDetallePage() {
                 Compartir por email
               </button>
               <button
-                onClick={() => downloadIcs(evento)}
+                onClick={() => downloadIcs(evento!)}
                 disabled={isGuest}
                 className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors disabled:opacity-40"
               >

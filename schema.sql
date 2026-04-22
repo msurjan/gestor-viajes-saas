@@ -79,6 +79,21 @@ CREATE TABLE noticias_eventos (
   created_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE reportes_precios_comunidad (
+  id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  evento_id       UUID         NOT NULL REFERENCES eventos_agenda(id) ON DELETE CASCADE,
+  user_id         UUID         REFERENCES auth.users(id) ON DELETE SET NULL,
+  categoria       TEXT         NOT NULL CHECK (categoria IN ('Visitante', 'Expositor (Stand)', 'Patrocinador', 'Membresía')),
+  detalle         TEXT         NOT NULL,
+  monto           NUMERIC      NOT NULL CHECK (monto > 0),
+  moneda          TEXT         NOT NULL DEFAULT 'USD',
+  unidad          TEXT         NOT NULL CHECK (unidad IN ('persona', 'm2', 'total')),
+  fecha_reporte   DATE         NOT NULL DEFAULT CURRENT_DATE,
+  fuente_url      TEXT,
+  comentario      TEXT,
+  created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- ─────────────────────────────────────────────
 -- SEGURIDAD (RLS)
 -- ─────────────────────────────────────────────
@@ -94,3 +109,6 @@ CREATE POLICY "acceso_autenticados_perfiles" ON perfiles_usuarios FOR ALL TO pub
 CREATE POLICY "acceso_autenticados_eventos" ON eventos_agenda FOR ALL TO public USING (true) WITH CHECK (true);
 CREATE POLICY "acceso_autenticados_asist" ON asistencias_eventos FOR ALL TO public USING (true) WITH CHECK (true);
 CREATE POLICY "acceso_autenticados_noticias" ON noticias_eventos FOR ALL TO public USING (true) WITH CHECK (true);
+
+ALTER TABLE reportes_precios_comunidad ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acceso_autenticados_precios" ON reportes_precios_comunidad FOR ALL TO public USING (true) WITH CHECK (true);
