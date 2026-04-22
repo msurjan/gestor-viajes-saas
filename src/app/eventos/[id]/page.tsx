@@ -162,7 +162,7 @@ export default function EventoDetallePage() {
     const body = [
       'Hola,',
       '',
-      'Te comparto información sobre el siguiente evento de la agenda B2B:',
+      'Te comparto información sobre el siguiente evento de la agenda corporativa:',
       '',
       `📍 ${evento.nombre}`,
       `📅 ${dateStr}`,
@@ -172,7 +172,7 @@ export default function EventoDetallePage() {
       shareNote ? `\nNota personal: ${shareNote}` : '',
       '',
       'Saludos,',
-      'Agenda B2B by Graiph',
+      'Agenda Corporativa',
     ].filter(l => l !== null).join('\n')
 
     window.open(
