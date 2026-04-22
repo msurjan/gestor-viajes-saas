@@ -8,7 +8,7 @@ import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
 import type { EventInput } from '@fullcalendar/core'
 import Link from 'next/link'
 import {
-  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight, LayoutGrid
+  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight, LayoutGrid, Globe
 } from 'lucide-react'
 import Marketplace from '@/components/Marketplace'
 
