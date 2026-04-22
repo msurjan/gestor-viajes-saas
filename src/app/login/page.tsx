@@ -155,6 +155,15 @@ function LoginContent() {
                   >
                     <LogIn className="h-4 w-4" /> Entrar con Microsoft
                   </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.setItem('isGuest', 'true')
+                      router.push('/')
+                    }}
+                    className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
+                  >
+                    <Globe className="h-4 w-4 text-blue-500" /> Explorar como Visita
+                  </button>
                 </div>
 
                 <div className="relative flex items-center py-2 mb-4">

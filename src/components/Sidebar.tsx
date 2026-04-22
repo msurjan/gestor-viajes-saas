@@ -20,9 +20,19 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router   = useRouter()
+  const [isGuest, setIsGuest] = useState(false)
+
+  useEffect(() => {
+    const guest = localStorage.getItem('isGuest') === 'true'
+    setIsGuest(guest)
+  }, [])
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
+    if (isGuest) {
+      localStorage.removeItem('isGuest')
+    } else {
+      await supabase.auth.signOut()
+    }
     router.push('/login')
     router.refresh()
   }
@@ -43,6 +53,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
+          if (isGuest && href === '/perfil') return null // Guests can't see profile
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
             <Link
@@ -66,11 +77,11 @@ export default function Sidebar() {
       <div className="border-t border-white/10 px-3 py-4 space-y-3">
         <button
           onClick={handleSignOut}
-          title="Cerrar sesión"
+          title={isGuest ? "Iniciar Sesión" : "Cerrar sesión"}
           className="flex w-full items-center justify-center lg:justify-start gap-3 rounded-lg lg:px-3 py-2.5 text-sm font-medium text-blue-100/70 hover:bg-white/[0.08] hover:text-white transition-colors"
         >
-          <LogOut className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
-          <span className="hidden lg:block overflow-hidden whitespace-nowrap">Cerrar sesión</span>
+          {isGuest ? <LogIn className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} /> : <LogOut className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />}
+          <span className="hidden lg:block overflow-hidden whitespace-nowrap">{isGuest ? 'Iniciar Sesión' : 'Cerrar sesión'}</span>
         </button>
         <p className="text-[11px] text-blue-200/30 px-3 hidden lg:block">MVP v0.2 · 2026</p>
       </div>

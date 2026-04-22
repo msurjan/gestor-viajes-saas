@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const [eventos, setEventos] = useState<EventoConAsistencia[]>([])
   const [borradores, setBorradores] = useState<EventoBorrador[]>([])
   const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -90,6 +91,10 @@ export default function DashboardPage() {
       setSession(session)
       if (session) {
         checkDemoStatus(session.user.id)
+        localStorage.removeItem('isGuest') // If logged in, not a guest
+      } else {
+        const guest = localStorage.getItem('isGuest') === 'true'
+        setIsGuest(guest)
       }
       setSessionLoaded(true)
     })
@@ -119,7 +124,7 @@ export default function DashboardPage() {
   }
 
   const fetchEventos = useCallback(async () => {
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !isGuest) {
       setLoading(false)
       return
     }
@@ -131,11 +136,15 @@ export default function DashboardPage() {
       .select('*')
       .order('fecha_inicio')
 
-    // 2. Obtenemos las asistencias específicas de este usuario
-    const { data: asistencias } = await supabase
-      .from('asistencias_eventos')
-      .select('evento_id, estado_asistencia')
-      .eq('user_id', session.user.id)
+    // 2. Obtenemos las asistencias específicas de este usuario (solo si no es invitado)
+    let asistencias: any[] = []
+    if (session?.user?.id) {
+      const { data } = await supabase
+        .from('asistencias_eventos')
+        .select('evento_id, estado_asistencia')
+        .eq('user_id', session.user.id)
+      asistencias = data ?? []
+    }
 
     if (globalEvents && !errGlobal) {
       const asistMap = new Map()
@@ -326,7 +335,7 @@ export default function DashboardPage() {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>
   }
 
-  if (!session) {
+  if (!session && !isGuest) {
     if (typeof window !== 'undefined') {
       window.location.href = '/login'
     }
@@ -336,6 +345,25 @@ export default function DashboardPage() {
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto">
       
+      {isGuest && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3 shadow-sm mb-4 animate-in fade-in slide-in-from-top-2">
+          <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+            <Globe className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-blue-900">Modo Invitado (Lectura)</p>
+            <p className="text-xs text-blue-700">Estás explorando el catálogo global. Para guardar eventos en tu agenda personal, por favor inicia sesión o crea una cuenta.</p>
+          </div>
+          <Link 
+            href="/login" 
+            onClick={() => localStorage.removeItem('isGuest')}
+            className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            Iniciar Sesión
+          </Link>
+        </div>
+      )}
+
       {isDemo && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 shadow-sm mb-4">
           <div className="bg-amber-100 p-2 rounded-full text-amber-600">
@@ -360,26 +388,28 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        <form onSubmit={handleSearch} className="relative w-full lg:max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
-            <input
-              type="text"
-              placeholder="Cazar evento con IA (ej. PDAC 2027)..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="w-full rounded-full border border-indigo-200 bg-indigo-50/50 py-2.5 pl-10 pr-24 text-sm text-slate-800 placeholder-indigo-300 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
-              disabled={isSearching}
-            />
-            <button
-              type="submit"
-              disabled={isSearching || !query.trim()}
-              className="absolute right-1 top-1 bottom-1 rounded-full bg-indigo-600 px-4 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center"
-            >
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
-            </button>
-          </div>
-        </form>
+        {!isGuest && (
+          <form onSubmit={handleSearch} className="relative w-full lg:max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
+              <input
+                type="text"
+                placeholder="Cazar evento con IA (ej. PDAC 2027)..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="w-full rounded-full border border-indigo-200 bg-indigo-50/50 py-2.5 pl-10 pr-24 text-sm text-slate-800 placeholder-indigo-300 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
+                disabled={isSearching}
+              />
+              <button
+                type="submit"
+                disabled={isSearching || !query.trim()}
+                className="absolute right-1 top-1 bottom-1 rounded-full bg-indigo-600 px-4 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center"
+              >
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
@@ -556,8 +586,8 @@ export default function DashboardPage() {
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Mi Interés en Asistir</label>
                   <select 
-                    disabled={savingStatus}
-                    className="w-full text-sm border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm py-2 px-3 font-medium text-slate-700 bg-white"
+                    disabled={savingStatus || isGuest}
+                    className={`w-full text-sm border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm py-2 px-3 font-medium text-slate-700 bg-white ${isGuest ? 'opacity-60 cursor-not-allowed' : ''}`}
                     value={modal.type === 'agenda' ? modal.data.estado : ''}
                     onChange={(e) => handleStatusChange(e.target.value as EstadoAgenda)}
                   >
@@ -630,14 +660,16 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold p-2 rounded-md hover:bg-red-50 transition-colors"
-                >
-                  {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  {modal.type === 'borrador' ? 'Descartar' : 'Desvincularme'}
-                </button>
+                {!isGuest && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold p-2 rounded-md hover:bg-red-50 transition-colors"
+                  >
+                    {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    {modal.type === 'borrador' ? 'Descartar' : 'Desvincularme'}
+                  </button>
+                )}
               </div>
 
             </div>
