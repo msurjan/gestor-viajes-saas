@@ -13,6 +13,7 @@ export interface PerfilUsuario {
   empresa_id: string | null
   cargo_estrategico: string | null
   linkedin_url: string | null
+  es_demo: boolean
   created_at: string
 }
 
@@ -26,6 +27,8 @@ export interface EventoAgenda {
   pais: string | null
   fuente_url: string | null
   tema: string | null
+  costo_entrada: string | null
+  imagen_url: string | null
   lat: number | null
   lng: number | null
   created_at: string

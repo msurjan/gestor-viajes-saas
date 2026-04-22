@@ -30,15 +30,22 @@ type ModalData =
   | { type: 'borrador', data: EventoBorrador }
   | { type: 'agenda', data: EventoConAsistencia }
 
+function addOneDay(dateStr: string): string {
+  const d = new Date(dateStr)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().split('T')[0]
+}
+
 function downloadIcs(e: EventoBorrador | EventoConAsistencia) {
   const fmt = (d: string) => d.replace(/-/g, '')
   const loc = [e.ciudad, e.pais].filter(Boolean).join(', ')
+  const endDate = addOneDay(e.fecha_fin)   // Outlook requires exclusive end date
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'BEGIN:VEVENT',
     `DTSTART;VALUE=DATE:${fmt(e.fecha_inicio)}`,
-    `DTEND;VALUE=DATE:${fmt(e.fecha_fin)}`,
+    `DTEND;VALUE=DATE:${fmt(endDate)}`,
     `SUMMARY:${e.nombre}`,
     `DESCRIPTION:${e.descripcion}`,
     loc ? `LOCATION:${loc}` : '',
@@ -73,7 +80,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [filtrosTema, setFiltrosTema] = useState<string[]>([])
-  const [vistaActual, setVistaActual] = useState<'calendario' | 'mapa' | 'marketplace'>('calendario')
+  const [vistaActual, setVistaActual] = useState<'calendario' | 'mapa' | 'eventos'>('calendario')
   
   const [noticiasModal, setNoticiasModal] = useState<any[]>([])
   const [loadingNoticias, setLoadingNoticias] = useState(false)
@@ -101,7 +108,11 @@ export default function DashboardPage() {
   }, [])
 
   async function checkDemoStatus(userId: string) {
-    const { data } = await supabase.from('perfiles_usuarios').select('es_demo').eq('user_id', userId).single()
+    const { data } = await supabase
+      .from('perfiles_usuarios')
+      .select('es_demo')
+      .eq('user_id', userId)
+      .single()
     if (data) {
       setIsDemo(!!data.es_demo)
     }
@@ -404,15 +415,15 @@ export default function DashboardPage() {
                 <MapIcon className="h-4 w-4" /> Mapa
               </button>
               <button
-                onClick={() => setVistaActual('marketplace')}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${vistaActual === 'marketplace' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => setVistaActual('eventos')}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${vistaActual === 'eventos' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                <LayoutGrid className="h-4 w-4" /> Marketplace
+                <LayoutGrid className="h-4 w-4" /> Eventos
               </button>
             </div>
           </div>
 
-          <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ${vistaActual === 'marketplace' ? '' : 'p-1 min-h-[600px]'} flex flex-col`}>
+          <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ${vistaActual === 'eventos' ? '' : 'p-1 min-h-[600px]'} flex flex-col`}>
             {loading ? <CalSkeleton /> : (
               vistaActual === 'calendario'
                 ? <CalendarioWrapper events={calendarEvents} onEventClick={handleEventClick} />
@@ -591,12 +602,15 @@ export default function DashboardPage() {
               {/* Botones de acción */}
               <div className="border-t border-slate-100 pt-5 flex items-center justify-between">
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleAutoScheduleGoogle}
-                    className="flex items-center gap-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 text-xs font-medium transition-colors border border-blue-200 shadow-sm"
-                  >
-                    🗓️ Sincronizar Calendario
-                  </button>
+                  <span title={isDemo ? 'Solo disponible en plan B2B' : undefined} className="inline-flex">
+                    <button
+                      onClick={handleAutoScheduleGoogle}
+                      disabled={isDemo}
+                      className="flex items-center gap-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 text-xs font-medium transition-colors border border-blue-200 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    >
+                      🗓️ Sincronizar Calendario
+                    </button>
+                  </span>
                   <button
                     onClick={() => downloadIcs(modal.data)}
                     className="flex items-center gap-2 rounded-lg bg-white text-slate-700 hover:bg-slate-50 px-3 py-2 text-xs font-medium transition-colors border border-slate-200 shadow-sm"

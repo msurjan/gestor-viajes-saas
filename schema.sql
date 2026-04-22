@@ -37,6 +37,7 @@ CREATE TABLE perfiles_usuarios (
   empresa_id        UUID           REFERENCES empresas(id) ON DELETE SET NULL,
   cargo_estrategico TEXT,
   linkedin_url      TEXT,
+  es_demo           BOOLEAN        DEFAULT FALSE,
   created_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
@@ -52,6 +53,8 @@ CREATE TABLE eventos_agenda (
   lng               FLOAT,
   fuente_url        TEXT,
   tema              TEXT,
+  costo_entrada     TEXT,
+  imagen_url        TEXT,
   created_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
 
