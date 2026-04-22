@@ -102,7 +102,7 @@ export default function EventoDetallePage() {
     if (!eventoId || (!session?.user?.id && !isGuest)) return
     setLoading(true)
     
-    const fetchPromises: Promise<any>[] = [
+    const fetchPromises: any[] = [
       supabase.from('eventos_agenda').select('*').eq('id', eventoId).maybeSingle()
     ]
 
