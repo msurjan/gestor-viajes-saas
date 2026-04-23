@@ -74,7 +74,13 @@ function LoginContent() {
         })
       }
 
-      alert("Cuenta creada con éxito. Ya puedes iniciar sesión.")
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (!signInError) {
+        router.push('/')
+        router.refresh()
+        return
+      }
+      setError(null)
       setIsRegistering(false)
       setLoading(false)
       return
@@ -189,14 +195,30 @@ function LoginContent() {
               </div>
 
               {!isRegistering && (
-                <div className="mt-6 pt-6 border-t border-slate-100">
-                  <button 
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-0">
+                  <button
                     type="button"
                     onClick={() => handleOAuthLogin('azure')}
                     className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
                   >
                     <Globe className="h-4 w-4" /> Entrar con Microsoft
                   </button>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('isGuest', 'true')
+                        localStorage.setItem('guest_session_start', Date.now().toString())
+                        router.push('/')
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 text-sm font-medium transition-all"
+                    >
+                      <Globe className="h-4 w-4" /> Explorar sin cuenta
+                    </button>
+                    <p className="text-[10px] text-slate-400 text-center mt-2">
+                      Puedes ver todos los eventos. Para guardar preferencias, regístrate.
+                    </p>
+                  </div>
                 </div>
               )}
             </form>

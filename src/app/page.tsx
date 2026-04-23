@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import type { EventoAgenda, EstadoAgenda } from '@/types/database'
-import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
 import type { EventInput } from '@fullcalendar/core'
 import Link from 'next/link'
 import {
-  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin, Tag, ArrowRight, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper, ArrowUpRight, LayoutGrid, Globe
+  Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin,
+  Tag, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper,
+  ArrowUpRight, LayoutGrid, Globe,
 } from 'lucide-react'
 import Marketplace from '@/components/Marketplace'
 import Sidebar from '@/components/Sidebar'
@@ -17,19 +18,17 @@ const CalendarioWrapper = dynamic(() => import('@/components/CalendarioWrapper')
 const MapaEventos = dynamic(() => import('@/components/MapaEventos'), { ssr: false, loading: () => <CalSkeleton /> })
 
 const ESTADO_COLORS: Record<EstadoAgenda, string> = {
-  evaluacion: 'bg-amber-100 text-amber-800 border-amber-300',
-  confirmado_visita: 'bg-blue-100 text-blue-800 border-blue-300',
+  evaluacion:             'bg-amber-100 text-amber-800 border-amber-300',
+  confirmado_visita:      'bg-blue-100 text-blue-800 border-blue-300',
   confirmado_auspiciador: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  descartado: 'bg-slate-100 text-slate-600 border-slate-300',
+  descartado:             'bg-slate-100 text-slate-600 border-slate-300',
 }
 
 const TEMAS_DISPONIBLES = ['Innovación', 'Maquinaria', 'Finanzas', 'Geología', 'Energía', 'Minería', 'Otro']
 
 type EventoConAsistencia = EventoAgenda & { estado?: EstadoAgenda }
 
-type ModalData =
-  | { type: 'borrador', data: EventoBorrador }
-  | { type: 'agenda', data: EventoConAsistencia }
+type ModalData = { type: 'agenda'; data: EventoConAsistencia }
 
 function addOneDay(dateStr: string): string {
   const d = new Date(dateStr)
@@ -37,7 +36,7 @@ function addOneDay(dateStr: string): string {
   return d.toISOString().split('T')[0]
 }
 
-function downloadIcs(e: EventoBorrador | EventoConAsistencia) {
+function downloadIcs(e: EventoConAsistencia) {
   const fmt = (d: string) => d.replace(/-/g, '')
   const loc = [e.ciudad, e.pais].filter(Boolean).join(', ')
   const endDate = addOneDay(e.fecha_fin)
@@ -51,7 +50,7 @@ function downloadIcs(e: EventoBorrador | EventoConAsistencia) {
     `DESCRIPTION:${e.descripcion}`,
     loc ? `LOCATION:${loc}` : '',
     'END:VEVENT',
-    'END:VCALENDAR'
+    'END:VCALENDAR',
   ].filter(Boolean).join('\n')
 
   const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
@@ -66,24 +65,20 @@ function downloadIcs(e: EventoBorrador | EventoConAsistencia) {
 }
 
 export default function DashboardPage() {
-  const [session, setSession] = useState<any>(null)
-  const [isDemo, setIsDemo] = useState(false)
-  const [eventos, setEventos] = useState<EventoConAsistencia[]>([])
-  const [borradores, setBorradores] = useState<EventoBorrador[]>([])
-  const [loading, setLoading] = useState(true)
+  const [session, setSession]   = useState<any>(null)
+  const [isDemo, setIsDemo]     = useState(false)
+  const [eventos, setEventos]   = useState<EventoConAsistencia[]>([])
+  const [loading, setLoading]   = useState(true)
 
-  const [query, setQuery] = useState('')
-  const [isSearching, setIsSearching] = useState(false)
-
-  const [modal, setModal] = useState<ModalData | null>(null)
+  const [modal, setModal]             = useState<ModalData | null>(null)
   const [savingStatus, setSavingStatus] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [deleting, setDeleting]       = useState(false)
 
-  const [filtrosTema, setFiltrosTema] = useState<string[]>([])
-  const [busquedaLocal, setBusquedaLocal] = useState('')
-  const [vistaActual, setVistaActual] = useState<'calendario' | 'mapa' | 'eventos'>('calendario')
+  const [filtrosTema, setFiltrosTema]       = useState<string[]>([])
+  const [busquedaLocal, setBusquedaLocal]   = useState('')
+  const [vistaActual, setVistaActual]       = useState<'calendario' | 'mapa' | 'eventos'>('calendario')
 
-  const [noticiasModal, setNoticiasModal] = useState<any[]>([])
+  const [noticiasModal, setNoticiasModal]     = useState<any[]>([])
   const [loadingNoticias, setLoadingNoticias] = useState(false)
 
   useEffect(() => {
@@ -91,12 +86,10 @@ export default function DashboardPage() {
       setSession(session)
       if (session) checkDemoStatus(session.user.id)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) checkDemoStatus(session.user.id)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -129,49 +122,12 @@ export default function DashboardPage() {
     if (globalEvents && !errGlobal) {
       const asistMap = new Map()
       asistencias.forEach(a => asistMap.set(a.evento_id, a.estado_asistencia))
-
-      const misEventos: EventoConAsistencia[] = globalEvents.map((e: any) => ({
-        ...e,
-        estado: asistMap.get(e.id)
-      }))
-
-      setEventos(misEventos)
+      setEventos(globalEvents.map((e: any) => ({ ...e, estado: asistMap.get(e.id) })))
     }
     setLoading(false)
   }, [session])
 
   useEffect(() => { fetchEventos() }, [fetchEventos])
-
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
-    setIsSearching(true)
-    const res = await cazarEvento(query)
-
-    if (res.borradores.length > 0) {
-      const nuevosValidos = res.borradores.filter(b => {
-        const nomBorrador = b.nombre.toLowerCase().trim()
-        return !eventos.some(e => {
-          const nomGlobal = e.nombre.toLowerCase().trim()
-          return nomGlobal.includes(nomBorrador) || nomBorrador.includes(nomGlobal)
-        })
-      })
-
-      if (nuevosValidos.length === 0) {
-        alert("Los eventos que encontró la IA ya se encuentran en el Catálogo Global.")
-        setQuery('')
-      } else {
-        setBorradores(prev => {
-          const newD = nuevosValidos.filter(b => !prev.some(p => p.id === b.id))
-          return [...newD, ...prev]
-        })
-        setQuery('')
-      }
-    } else {
-      alert("No se encontraron resultados.")
-    }
-    setIsSearching(false)
-  }
 
   const eventosFiltrados = eventos.filter(e => {
     const coincideTema = filtrosTema.length === 0 || (e.tema && filtrosTema.includes(e.tema))
@@ -179,39 +135,28 @@ export default function DashboardPage() {
     const coincideTexto = !q || [e.nombre, e.ciudad, e.pais, e.tema].some(campo => campo?.toLowerCase().includes(q))
     return coincideTema && coincideTexto
   })
-  const borradoresFiltrados = borradores.filter(b => filtrosTema.length === 0 || (b.tema && filtrosTema.includes(b.tema)))
 
-  const calendarEvents: EventInput[] = [
-    ...eventosFiltrados.map(e => ({
-      id: e.id,
-      title: e.nombre,
-      start: e.fecha_inicio,
-      end: e.fecha_fin,
-      className: e.estado ? ESTADO_COLORS[e.estado] : 'bg-slate-50 text-slate-500 border-slate-200 border-dashed border',
-      extendedProps: { type: 'agenda', data: e }
-    })),
-    ...borradoresFiltrados.map(b => ({
-      id: b.id,
-      title: `[IA] ${b.nombre}`,
-      start: b.fecha_inicio,
-      end: b.fecha_fin,
-      className: 'bg-indigo-50 text-indigo-700 border-indigo-300 border-dashed border',
-      extendedProps: { type: 'borrador', data: b }
-    }))
-  ]
+  const calendarEvents: EventInput[] = eventosFiltrados.map(e => ({
+    id: e.id,
+    title: e.nombre,
+    start: e.fecha_inicio,
+    end: e.fecha_fin,
+    className: e.estado ? ESTADO_COLORS[e.estado] : 'bg-slate-50 text-slate-500 border-slate-200 border-dashed border',
+    extendedProps: { type: 'agenda', data: e },
+  }))
 
   async function handleEventClick(arg: any) {
     const modalData = arg.event.extendedProps as ModalData
     setModal(modalData)
-
-    if (modalData.type === 'agenda') {
-      setLoadingNoticias(true)
-      const { data } = await supabase.from('noticias_eventos').select('*').eq('evento_id', modalData.data.id).order('fecha_publicacion', { ascending: false }).limit(3)
-      setNoticiasModal(data ?? [])
-      setLoadingNoticias(false)
-    } else {
-      setNoticiasModal([])
-    }
+    setLoadingNoticias(true)
+    const { data } = await supabase
+      .from('noticias_eventos')
+      .select('*')
+      .eq('evento_id', modalData.data.id)
+      .order('fecha_publicacion', { ascending: false })
+      .limit(3)
+    setNoticiasModal(data ?? [])
+    setLoadingNoticias(false)
   }
 
   async function handleStatusChange(nuevoEstado: EstadoAgenda) {
@@ -224,47 +169,14 @@ export default function DashboardPage() {
     }
 
     setSavingStatus(true)
-
     try {
-      if (modal.type === 'borrador') {
-        const b = modal.data
-        const insertData: any = {
-            nombre: b.nombre,
-            descripcion: b.descripcion,
-            fecha_inicio: b.fecha_inicio,
-            fecha_fin: b.fecha_fin,
-            ciudad: b.ciudad,
-            pais: b.pais,
-            lat: b.lat,
-            lng: b.lng,
-            fuente_url: b.fuente_url,
-            tema: b.tema,
-            ...(b.costo_entrada ? { costo_entrada: b.costo_entrada } : {}),
-            ...(b.imagen_url ? { imagen_url: b.imagen_url } : {}),
-        }
-        const { data: ev, error: errEv } = await supabase.from('eventos_agenda').insert(insertData).select().single()
-
-        if (errEv || !ev) throw errEv
-
-        const { error: errAsist } = await supabase.from('asistencias_eventos').insert({
-          user_id: session.user.id,
-          evento_id: ev.id,
-          estado_asistencia: nuevoEstado
-        })
-
-        if (errAsist) throw errAsist
-
-        setBorradores(prev => prev.filter(x => x.id !== b.id))
-        await fetchEventos()
-      } else {
-        const a = modal.data
-        const { error } = await supabase.from('asistencias_eventos').update({
-          estado_asistencia: nuevoEstado
-        }).eq('user_id', session.user.id).eq('evento_id', a.id)
-
-        if (error) throw error
-        await fetchEventos()
-      }
+      const { error } = await supabase
+        .from('asistencias_eventos')
+        .update({ estado_asistencia: nuevoEstado })
+        .eq('user_id', session.user.id)
+        .eq('evento_id', modal.data.id)
+      if (error) throw error
+      await fetchEventos()
       setModal(null)
     } catch (e: any) {
       alert("Error: " + e.message)
@@ -275,23 +187,17 @@ export default function DashboardPage() {
 
   async function handleDelete() {
     if (!modal || !session?.user) return
-    const confirmDelete = window.confirm(modal.type === 'borrador' ? "¿Descartar este borrador?" : "¿Desvincularte de este evento?")
-    if (!confirmDelete) return
+    if (!window.confirm("¿Desvincularte de este evento?")) return
 
     setDeleting(true)
     try {
-      if (modal.type === 'borrador') {
-        setBorradores(prev => prev.filter(x => x.id !== modal.data.id))
-      } else {
-        const { error } = await supabase.from('asistencias_eventos').delete()
-          .eq('user_id', session.user.id)
-          .eq('evento_id', modal.data.id)
-        if (!error) {
-          await fetchEventos()
-        } else {
-          alert("Error al eliminar: " + error.message)
-        }
-      }
+      const { error } = await supabase
+        .from('asistencias_eventos')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('evento_id', modal.data.id)
+      if (!error) await fetchEventos()
+      else alert("Error al eliminar: " + error.message)
       setModal(null)
     } finally {
       setDeleting(false)
@@ -316,7 +222,7 @@ export default function DashboardPage() {
             <Globe className="h-8 w-8 text-blue-400 flex-shrink-0" strokeWidth={1.5} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">Catálogo Global de Eventos B2B</p>
-              <p className="text-xs text-blue-300/70 mt-0.5">Explora libremente. Inicia sesión para gestionar tu agenda y usar el motor de IA.</p>
+              <p className="text-xs text-blue-300/70 mt-0.5">Explora libremente. Inicia sesión para gestionar tu agenda.</p>
             </div>
             <Link
               href="/login"
@@ -342,8 +248,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Header & Cazador ────────────────────────────────────────────── */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-[#0c1e3c]">Agenda Corporativa</h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -361,37 +267,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {session && (
-            <form onSubmit={handleSearch} className="flex items-center gap-2 w-full lg:max-w-md">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
-                <input
-                  type="text"
-                  placeholder="Cazar evento con IA (ej. PDAC 2027)..."
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  className="w-full rounded-full border border-indigo-200 bg-indigo-50/50 py-2.5 pl-10 pr-24 text-sm text-slate-800 placeholder-indigo-300 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
-                  disabled={isSearching}
-                />
-                <button
-                  type="submit"
-                  disabled={isSearching || !query.trim()}
-                  className="absolute right-1 top-1 bottom-1 rounded-full bg-indigo-600 px-4 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center"
-                >
-                  {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
-                </button>
-              </div>
-              {isSearching && (
-                <button
-                  type="button"
-                  onClick={() => setIsSearching(false)}
-                  className="flex items-center gap-1.5 rounded-lg bg-red-100 hover:bg-red-200 border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition-colors shrink-0"
-                >
-                  <X className="h-4 w-4" /> Cancelar
-                </button>
-              )}
-            </form>
-          )}
+          <Link
+            href="/sugerir-evento"
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-lg px-4 py-2 transition-colors bg-white shadow-sm self-start mt-1"
+          >
+            <span>+ Sugerir un evento</span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
@@ -451,43 +332,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ── Sidebar Panels ────────────────────────────────────────────── */}
+          {/* ── Right panel ───────────────────────────────────────────────── */}
           <div className="flex flex-col gap-6">
-
-            {session && (
-              <div className="rounded-2xl border border-indigo-100 bg-white shadow-sm overflow-hidden flex flex-col">
-                <div className="bg-indigo-50/50 border-b border-indigo-100 px-4 py-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-indigo-900 flex items-center gap-2">
-                    <Search className="h-4 w-4 text-indigo-500" />
-                    Por Validar (IA)
-                  </h3>
-                  <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded-full">{borradoresFiltrados.length}</span>
-                </div>
-                <div className="p-3 overflow-y-auto max-h-[300px] flex-1 space-y-2 bg-slate-50/30">
-                  {borradoresFiltrados.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-6">Busca eventos en el catálogo global.</p>
-                  ) : (
-                    borradoresFiltrados.map(b => (
-                      <button
-                        key={b.id}
-                        onClick={() => setModal({ type: 'borrador', data: b })}
-                        className="w-full text-left rounded-xl bg-white border border-indigo-100 p-3 hover:border-indigo-300 hover:shadow-sm transition-all group relative"
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <p className="text-sm font-semibold text-indigo-900 leading-tight pr-6">{b.nombre}</p>
-                          <ArrowRight className="h-4 w-4 text-indigo-300 group-hover:text-indigo-600 absolute right-3 top-3 transition-colors" />
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 mt-2">
-                          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3"/> {new Date(b.fecha_inicio).toLocaleDateString('es-MX', {day: '2-digit', month: 'short'})}</span>
-                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3"/> {b.ciudad}</span>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
               <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -505,7 +351,7 @@ export default function DashboardPage() {
                       <button
                         key={e.id}
                         onClick={() => setModal({ type: 'agenda', data: e })}
-                        className="w-full text-left rounded-xl bg-white border border-slate-100 p-3 hover:border-slate-300 hover:shadow-sm transition-all group"
+                        className="w-full text-left rounded-xl bg-white border border-slate-100 p-3 hover:border-slate-300 hover:shadow-sm transition-all"
                       >
                         <p className="text-sm font-medium text-slate-800 leading-tight mb-1.5">{e.nombre}</p>
                         <div className="flex items-center justify-between">
@@ -514,7 +360,7 @@ export default function DashboardPage() {
                           </span>
                           <span className="text-xs text-slate-400 flex items-center gap-1">
                             <CalendarDays className="h-3 w-3" />
-                            {new Date(e.fecha_inicio).toLocaleDateString('es-MX', {month: 'short', year: '2-digit'})}
+                            {new Date(e.fecha_inicio).toLocaleDateString('es-MX', { month: 'short', year: '2-digit' })}
                           </span>
                         </div>
                       </button>
@@ -530,14 +376,13 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium text-slate-800 leading-tight mb-1.5">{e.nombre}</p>
                       <span className="text-xs text-slate-400 flex items-center gap-1">
                         <CalendarDays className="h-3 w-3" />
-                        {new Date(e.fecha_inicio).toLocaleDateString('es-MX', {month: 'short', year: 'numeric'})}
+                        {new Date(e.fecha_inicio).toLocaleDateString('es-MX', { month: 'short', year: 'numeric' })}
                       </span>
                     </Link>
                   ))
                 )}
               </div>
             </div>
-
           </div>
         </div>
 
@@ -549,8 +394,8 @@ export default function DashboardPage() {
               <div className="flex items-start justify-between border-b border-slate-100 bg-[#0c1e3c] text-white px-6 py-5">
                 <div className="pr-4">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${modal.type === 'borrador' ? 'bg-indigo-500 text-white' : modal.data.estado ? 'bg-emerald-500 text-white' : 'bg-white/20 text-blue-100'}`}>
-                      {modal.type === 'borrador' ? 'Cacería IA' : modal.data.estado ? 'Mi Asistencia' : 'Catálogo Global'}
+                    <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${modal.data.estado ? 'bg-emerald-500 text-white' : 'bg-white/20 text-blue-100'}`}>
+                      {modal.data.estado ? 'Mi Asistencia' : 'Catálogo Global'}
                     </span>
                     {modal.data.tema && (
                       <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full border border-white/20 text-white/80 flex items-center gap-1">
@@ -561,11 +406,13 @@ export default function DashboardPage() {
                   </div>
                   <h2 className="text-lg font-semibold leading-tight">{modal.data.nombre}</h2>
                   <div className="flex items-center gap-3 text-xs text-blue-200/70 mt-2">
-                    <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5"/>
-                      {new Date(modal.data.fecha_inicio).toLocaleDateString('es-MX', {day: '2-digit', month: 'short', year: 'numeric'})}
+                    <span className="flex items-center gap-1">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {new Date(modal.data.fecha_inicio).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                     {modal.data.ciudad && (
-                      <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5"/>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
                         {[modal.data.ciudad, modal.data.pais].filter(Boolean).join(', ')}
                       </span>
                     )}
@@ -594,10 +441,10 @@ export default function DashboardPage() {
                       <select
                         disabled={savingStatus}
                         className="w-full text-sm border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-sm py-2 px-3 font-medium text-slate-700 bg-white"
-                        value={modal.type === 'agenda' ? (modal.data as EventoConAsistencia).estado : ''}
-                        onChange={(e) => handleStatusChange(e.target.value as EstadoAgenda)}
+                        value={modal.data.estado ?? ''}
+                        onChange={e => handleStatusChange(e.target.value as EstadoAgenda)}
                       >
-                        {modal.type === 'borrador' && <option value="" disabled>Selecciona tu estado de asistencia...</option>}
+                        <option value="" disabled>Selecciona tu estado...</option>
                         <option value="evaluacion">Evaluando ir</option>
                         <option value="confirmado_visita">Confirmado (Asistente)</option>
                         <option value="confirmado_auspiciador">Confirmado (Sponsor)</option>
@@ -619,36 +466,34 @@ export default function DashboardPage() {
                   {savingStatus && <Loader2 className="h-5 w-5 animate-spin text-indigo-500 mx-auto" />}
                 </div>
 
-                {modal.type === 'agenda' && (
-                  <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <Newspaper className="h-4 w-4" /> Radar de Prensa Automatizado
-                    </h4>
-                    {loadingNoticias ? (
-                      <div className="flex items-center gap-2 text-slate-400 text-xs">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Buscando actualizaciones en el mercado...
-                      </div>
-                    ) : noticiasModal.length > 0 ? (
-                      <div className="space-y-3">
-                        {noticiasModal.map(n => (
-                          <div key={n.id} className="text-sm">
-                            <a href={n.url_fuente} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-900 hover:text-indigo-600 hover:underline leading-tight block">
-                              {n.titular}
-                            </a>
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.resumen}</p>
-                            <span className="text-[10px] font-medium text-slate-400 block mt-1">{new Date(n.fecha_publicacion).toLocaleDateString()}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">No hay noticias recientes para este evento en la prensa.</p>
-                    )}
-                  </div>
-                )}
+                <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Newspaper className="h-4 w-4" /> Radar de Prensa Automatizado
+                  </h4>
+                  {loadingNoticias ? (
+                    <div className="flex items-center gap-2 text-slate-400 text-xs">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Buscando actualizaciones en el mercado...
+                    </div>
+                  ) : noticiasModal.length > 0 ? (
+                    <div className="space-y-3">
+                      {noticiasModal.map(n => (
+                        <div key={n.id} className="text-sm">
+                          <a href={n.url_fuente} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-900 hover:text-indigo-600 hover:underline leading-tight block">
+                            {n.titular}
+                          </a>
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.resumen}</p>
+                          <span className="text-[10px] font-medium text-slate-400 block mt-1">{new Date(n.fecha_publicacion).toLocaleDateString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">No hay noticias recientes para este evento en la prensa.</p>
+                  )}
+                </div>
 
                 <div className="border-t border-slate-100 pt-5 flex items-center justify-between">
                   <div className="flex flex-wrap gap-2">
-                    <span title={!session?.user ? 'Solo disponible en plan B2B' : isDemo ? 'Solo disponible en plan B2B' : undefined} className="inline-flex">
+                    <span title={!session?.user || isDemo ? 'Solo disponible en plan B2B' : undefined} className="inline-flex">
                       <button
                         onClick={handleAutoScheduleGoogle}
                         disabled={isDemo || !session?.user}
@@ -667,16 +512,14 @@ export default function DashboardPage() {
                         Bajar .ics
                       </button>
                     </span>
-                    {modal.type === 'agenda' && (
-                      <Link
-                        href={`/eventos/${modal.data.id}`}
-                        onClick={() => setModal(null)}
-                        className="flex items-center gap-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-2 text-xs font-medium transition-colors border border-indigo-200 shadow-sm"
-                      >
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                        Ver detalle completo
-                      </Link>
-                    )}
+                    <Link
+                      href={`/eventos/${modal.data.id}`}
+                      onClick={() => setModal(null)}
+                      className="flex items-center gap-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-2 text-xs font-medium transition-colors border border-indigo-200 shadow-sm"
+                    >
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                      Ver detalle completo
+                    </Link>
                   </div>
 
                   {session?.user && (
@@ -686,7 +529,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold p-2 rounded-md hover:bg-red-50 transition-colors"
                     >
                       {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      {modal.type === 'borrador' ? 'Descartar' : 'Desvincularme'}
+                      Desvincularme
                     </button>
                   )}
                 </div>

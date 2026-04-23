@@ -103,7 +103,6 @@ export default function EventoDetalleClient({ eventoId }: { eventoId: string }) 
   // ── Data fetch ──────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
-    if (!session?.user?.id && !isGuest) return
     setLoading(true)
 
     try {
@@ -214,15 +213,6 @@ export default function EventoDetalleClient({ eventoId }: { eventoId: string }) 
   // ── Guards ──────────────────────────────────────────────────────────────
 
   if (!sessionLoaded || (sessionLoaded && session && loading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-      </div>
-    )
-  }
-
-  if (!session && !isGuest) {
-    if (typeof window !== 'undefined') window.location.href = '/login'
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />

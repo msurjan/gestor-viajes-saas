@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -7,7 +8,10 @@ import {
   Globe,
   LogOut,
   UserCircle,
+  Settings,
 } from 'lucide-react'
+
+const ADMIN_EMAIL = 'marcelosurjan@gmail.com'
 
 const navItems = [
   { href: '/',       label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +21,17 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router   = useRouter()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+      setUserEmail(s?.user?.email ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -57,6 +72,21 @@ export default function Sidebar() {
             </Link>
           )
         })}
+
+        {userEmail === ADMIN_EMAIL && (
+          <Link
+            href="/admin"
+            title="Admin"
+            className={`flex items-center justify-center lg:justify-start gap-3 rounded-lg lg:px-3 py-2.5 text-sm font-medium transition-colors ${
+              pathname.startsWith('/admin')
+                ? 'bg-blue-600 text-white'
+                : 'text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
+            }`}
+          >
+            <Settings className="h-5 w-5 flex-shrink-0" strokeWidth={1.75} />
+            <span className="hidden lg:block overflow-hidden whitespace-nowrap">Admin</span>
+          </Link>
+        )}
       </nav>
 
       {/* Footer: sign-out */}
