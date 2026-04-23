@@ -362,8 +362,8 @@ export default function DashboardPage() {
           </div>
 
           {session && (
-            <form onSubmit={handleSearch} className="relative w-full lg:max-w-md">
-              <div className="relative">
+            <form onSubmit={handleSearch} className="flex items-center gap-2 w-full lg:max-w-md">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
                 <input
                   type="text"
@@ -381,6 +381,15 @@ export default function DashboardPage() {
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
                 </button>
               </div>
+              {isSearching && (
+                <button
+                  type="button"
+                  onClick={() => setIsSearching(false)}
+                  className="flex items-center gap-1.5 rounded-lg bg-red-100 hover:bg-red-200 border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4" /> Cancelar
+                </button>
+              )}
             </form>
           )}
         </div>

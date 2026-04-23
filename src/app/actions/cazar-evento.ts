@@ -1,7 +1,5 @@
 'use server'
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
 // ── Shared types ────────────────────────────────────────────────────────
 
 export type EventoBorrador = {
@@ -23,7 +21,7 @@ export type EventoBorrador = {
 
 export type CazarEventoResult = {
   borradores: EventoBorrador[]
-  fuente: 'gemini' | 'mock'
+  fuente: 'perplexity' | 'mock'
   error?: string
 }
 
@@ -33,7 +31,7 @@ const today = () => new Date().toISOString().split('T')[0]
 
 const SYSTEM = `You are a corporate intelligence assistant specialized in finding mining, energy, finance, and industry conferences worldwide.
 Today's date is ${today()}.
-When asked about an event, find its NEXT upcoming edition (after today) using your Google Search grounding tool to get current, real dates and official URLs.
+When asked about an event, find its NEXT upcoming edition (after today) using real, current information to get accurate dates and official URLs.
 Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY this schema:
 {
   "eventos": [
@@ -56,7 +54,7 @@ Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY thi
 }
 If the event has multiple tracks or you find multiple editions, return each as a separate object.
 If you cannot find reliable data, return an empty array.
-IMPORTANT: Use the search results to provide accurate, up-to-date information. Do not guess dates.`
+IMPORTANT: Use real, up-to-date information. Do not guess dates.`
 
 // ── Mock fallback (no API key) ──────────────────────────────────────────
 
@@ -122,7 +120,7 @@ function mockSearch(query: string): EventoBorrador[] {
     {
       id:           `draft-${Date.now()}-0`,
       nombre:       `${query.toUpperCase()} 2027`,
-      descripcion:  `Industry conference related to "${query}". (Datos simulados — configura GEMINI_API_KEY para resultados reales con búsqueda en Google.)`,
+      descripcion:  `Industry conference related to "${query}". (Datos simulados — configura PERPLEXITY_API_KEY para resultados reales.)`,
       tema:         'Otro',
       fecha_inicio: '2027-04-15',
       fecha_fin:    '2027-04-18',
@@ -143,24 +141,40 @@ function mockSearch(query: string): EventoBorrador[] {
 export async function cazarEvento(query: string): Promise<CazarEventoResult> {
   if (!query.trim()) return { borradores: [], fuente: 'mock' }
 
-  const geminiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.PERPLEXITY_API_KEY
 
-  if (!geminiKey) {
+  if (!apiKey) {
     return { borradores: mockSearch(query), fuente: 'mock' }
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(geminiKey)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
-      tools: [{ googleSearch: {} } as any],
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: `Find the next upcoming edition of: "${query}"` },
+        ],
+      }),
+      signal: controller.signal,
     })
 
-    const prompt = `${SYSTEM}\n\nFind the next upcoming edition of: "${query}"`
+    clearTimeout(timeoutId)
 
-    const result = await model.generateContent(prompt)
-    const raw = result.response.text()
+    if (!response.ok) {
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const raw: string = data.choices[0].message.content
 
     // Strip possible markdown code fences
     const clean = raw
@@ -170,20 +184,21 @@ export async function cazarEvento(query: string): Promise<CazarEventoResult> {
 
     const parsed = JSON.parse(clean)
 
-    const borradores: EventoBorrador[] = (parsed.eventos ?? []).map(
+    const borradores: EventoBorrador[] = (parsed.eventos ?? []).slice(0, 3).map(
       (e: Omit<EventoBorrador, 'id'>, i: number) => ({
         ...e,
         id: `draft-${Date.now()}-${i}`,
       }),
     )
 
-    return { borradores, fuente: 'gemini' }
+    return { borradores, fuente: 'perplexity' }
   } catch (err) {
     console.error('[cazarEvento]', err)
+    const isTimeout = err instanceof Error && err.message.includes('abort')
     return {
       borradores: mockSearch(query),
       fuente: 'mock',
-      error: String(err),
+      error: isTimeout ? 'Timeout' : String(err),
     }
   }
 }
