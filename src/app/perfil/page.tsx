@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { PerfilUsuario, Empresa, EstadoAgenda } from '@/types/database'
+import Link from 'next/link'
 import {
   UserCircle, Building2, Mail, Save, Loader2,
-  CheckCircle2, AlertTriangle, BarChart3,
+  CheckCircle2, AlertTriangle, BarChart3, ArrowLeft,
 } from 'lucide-react'
 
 const ESTADO_LABELS: Record<EstadoAgenda, string> = {
@@ -206,6 +207,13 @@ export default function PerfilPage() {
     <div className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[#0c1e3c] font-medium mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Eventos
+        </Link>
         <h1 className="text-2xl font-semibold text-[#0c1e3c]">Mi Perfil</h1>
         <p className="text-sm text-slate-500 mt-1">Gestiona tu información corporativa y preferencias.</p>
       </div>
