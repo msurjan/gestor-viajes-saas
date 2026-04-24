@@ -15,7 +15,18 @@ import {
 
 const ADMIN_EMAIL = 'marcelosurjan@gmail.com'
 
-const TEMAS = ['Innovación', 'Maquinaria', 'Finanzas', 'Geología', 'Energía', 'Minería', 'Otro']
+const TEMAS = [
+  'Minería y Metales',
+  'Energía y Renovables',
+  'Tecnología e IA',
+  'Finanzas e Inversión',
+  'Infraestructura y Construcción',
+  'Sostenibilidad y ESG',
+  'Logística y Transporte',
+  'Manufactura e Industria 4.0',
+  'Petróleo y Gas',
+  'Otros Temas Estratégicos'
+]
 
 const MODELOS = [
   { id: 'sonar',     label: 'sonar — económico',     price: 0.005 },
@@ -247,6 +258,10 @@ export default function AdminPage() {
       return [...newOnes, ...prev]
     })
     setIsSearching(false)
+  }
+
+  function updateBorrador(id: string, field: keyof EventoBorrador, value: string) {
+    setBorradores(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b))
   }
 
   async function handleSaveBorrador(b: EventoBorrador) {
@@ -485,36 +500,118 @@ export default function AdminPage() {
                 </form>
 
                 {borradores.length > 0 && (
-                  <div className="space-y-3">
-                    {borradores.map(b => (
-                      <div key={b.id} className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4 flex gap-4 items-start">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 leading-tight">{b.nombre}</p>
-                          <div className="flex flex-wrap gap-3 text-xs text-slate-500 mt-1">
-                            <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{b.fecha_inicio} — {b.fecha_fin}</span>
-                            {b.ciudad && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{b.ciudad}, {b.pais}</span>}
-                            {b.tema && <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium">{b.tema}</span>}
+                  <div className="space-y-4">
+                    {borradores.map(b => {
+                      const saved = savedIds.has(b.id)
+                      const iCls = 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-300 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-400'
+                      return (
+                        <div key={b.id} className={`rounded-xl border p-4 space-y-3 ${saved ? 'border-emerald-200 bg-emerald-50/30' : 'border-indigo-100 bg-indigo-50/20'}`}>
+
+                          {/* Nombre */}
+                          <input
+                            type="text"
+                            value={b.nombre}
+                            onChange={e => updateBorrador(b.id, 'nombre', e.target.value)}
+                            disabled={saved}
+                            placeholder="Nombre del evento"
+                            className={`${iCls} text-sm font-semibold`}
+                          />
+
+                          {/* Fechas + Ubicación */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Inicio</p>
+                              <input
+                                type="date"
+                                value={b.fecha_inicio}
+                                onChange={e => updateBorrador(b.id, 'fecha_inicio', e.target.value)}
+                                disabled={saved}
+                                className={iCls}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Fin</p>
+                              <input
+                                type="date"
+                                value={b.fecha_fin}
+                                onChange={e => updateBorrador(b.id, 'fecha_fin', e.target.value)}
+                                disabled={saved}
+                                className={iCls}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Ciudad</p>
+                              <input
+                                type="text"
+                                value={b.ciudad ?? ''}
+                                onChange={e => updateBorrador(b.id, 'ciudad', e.target.value)}
+                                disabled={saved}
+                                placeholder="Ciudad"
+                                className={iCls}
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">País</p>
+                              <input
+                                type="text"
+                                value={b.pais ?? ''}
+                                onChange={e => updateBorrador(b.id, 'pais', e.target.value)}
+                                disabled={saved}
+                                placeholder="País"
+                                className={iCls}
+                              />
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{b.descripcion}</p>
+
+                          {/* Tema + URL */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Tema</p>
+                              <select
+                                value={b.tema ?? ''}
+                                onChange={e => updateBorrador(b.id, 'tema', e.target.value)}
+                                disabled={saved}
+                                className={iCls}
+                              >
+                                <option value="">Sin tema</option>
+                                {TEMAS.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">URL fuente</p>
+                              <input
+                                type="text"
+                                value={b.fuente_url ?? ''}
+                                onChange={e => updateBorrador(b.id, 'fuente_url', e.target.value)}
+                                disabled={saved}
+                                placeholder="https://..."
+                                className={iCls}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Footer */}
+                          <div className="flex items-center justify-end pt-1">
+                            <button
+                              onClick={() => handleSaveBorrador(b)}
+                              disabled={!!savingId || saved}
+                              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                                saved
+                                  ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                                  : 'bg-[#0c1e3c] hover:bg-blue-900 text-white disabled:opacity-60'
+                              }`}
+                            >
+                              {savingId === b.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : saved
+                                ? <CheckCircle2 className="h-3.5 w-3.5" />
+                                : <PlusCircle className="h-3.5 w-3.5" />}
+                              {saved ? 'Guardado en catálogo' : 'Guardar en catálogo'}
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleSaveBorrador(b)}
-                          disabled={!!savingId || savedIds.has(b.id)}
-                          className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                            savedIds.has(b.id)
-                              ? 'bg-emerald-100 text-emerald-700 cursor-default'
-                              : 'bg-[#0c1e3c] hover:bg-blue-900 text-white disabled:opacity-60'
-                          }`}
-                        >
-                          {savingId === b.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : savedIds.has(b.id)
-                            ? <CheckCircle2 className="h-3.5 w-3.5" />
-                            : <PlusCircle className="h-3.5 w-3.5" />}
-                          {savedIds.has(b.id) ? 'Guardado' : 'Guardar en catálogo'}
-                        </button>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
