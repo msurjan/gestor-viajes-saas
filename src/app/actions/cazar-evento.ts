@@ -29,7 +29,7 @@ export type CazarEventoResult = {
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
-const SYSTEM = `You are a corporate intelligence assistant specialized in finding mining, energy, finance, and industry conferences worldwide.
+const SYSTEM = `You are Vento Global's Corporate Intelligence Assistant, specialized in finding mining, energy, tech, finance, and industrial strategic conferences worldwide.
 Today's date is ${todayStr()}.
 When asked about an event, find its NEXT upcoming edition (starting AFTER today) using real, current information to get accurate dates and official URLs.
 CRITICAL: Do NOT return events that have already started or finished. Only return future editions.
@@ -39,7 +39,7 @@ Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY thi
     {
       "nombre": "Full official event name",
       "descripcion": "Official and detailed thematic description of the event.",
-      "tema": "One of: Innovación, Maquinaria, Finanzas, Geología, Energía, Minería, Otro",
+      "tema": "One of: Minería y Metales, Energía y Renovables, Tecnología e IA, Finanzas e Inversión, Infraestructura y Construcción, Sostenibilidad y ESG, Logística y Transporte, Manufactura e Industria 4.0, Petróleo y Gas, Otros Temas Estratégicos",
       "fecha_inicio": "YYYY-MM-DD",
       "fecha_fin": "YYYY-MM-DD",
       "ciudad": "City",

@@ -24,7 +24,18 @@ const ESTADO_COLORS: Record<EstadoAgenda, string> = {
   descartado:             'bg-slate-100 text-slate-600 border-slate-300',
 }
 
-const TEMAS_DISPONIBLES = ['Innovación', 'Maquinaria', 'Finanzas', 'Geología', 'Energía', 'Minería', 'Otro']
+const TEMAS_DISPONIBLES = [
+  'Minería y Metales',
+  'Energía y Renovables',
+  'Tecnología e IA',
+  'Finanzas e Inversión',
+  'Infraestructura y Construcción',
+  'Sostenibilidad y ESG',
+  'Logística y Transporte',
+  'Manufactura e Industria 4.0',
+  'Petróleo y Gas',
+  'Otros Temas Estratégicos'
+]
 
 type EventoConAsistencia = EventoAgenda & { estado?: EstadoAgenda }
 

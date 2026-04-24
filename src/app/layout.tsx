@@ -5,8 +5,8 @@ import './globals.css'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
-  title: 'Agenda Corporativa · Agenda Corporativa',
-  description: 'Plataforma de gestión de eventos y viajes corporativos',
+  title: 'Vento Global · Corporate Intelligence Hub',
+  description: 'Global strategic platform for corporate events and networking intelligence.',
 }
 
 export default function RootLayout({

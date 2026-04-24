@@ -45,9 +45,9 @@ export default function Sidebar() {
       <div className="flex h-16 items-center justify-center lg:justify-start lg:gap-3 border-b border-white/10 lg:px-6 px-4">
         <Globe className="h-7 w-7 text-blue-400 flex-shrink-0" strokeWidth={1.5} />
         <div className="leading-tight hidden lg:block overflow-hidden whitespace-nowrap">
-          <p className="text-sm font-semibold tracking-wide">Agenda Corporativa</p>
-          <p className="text-[10px] text-blue-300/70 uppercase tracking-widest">
-            by Agenda Corporativa
+          <p className="text-sm font-semibold tracking-wide">Vento Global</p>
+          <p className="text-[10px] text-blue-300/70 uppercase tracking-widest font-medium">
+            Intelligence Hub
           </p>
         </div>
       </div>

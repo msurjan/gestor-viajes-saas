@@ -106,8 +106,8 @@ function LoginContent() {
         <div className="flex items-center justify-center gap-3 mb-8">
           <Globe className="h-9 w-9 text-blue-400" strokeWidth={1.5} />
           <div className="leading-tight">
-            <p className="text-white font-semibold tracking-wide text-lg">Agenda Corporativa</p>
-            <p className="text-blue-300/60 text-[10px] uppercase tracking-widest">by Agenda Corporativa</p>
+            <p className="text-white font-semibold tracking-wide text-lg">Vento Global</p>
+            <p className="text-blue-300/60 text-[10px] uppercase tracking-widest">Corporate Intelligence Hub</p>
           </div>
         </div>
 
@@ -226,7 +226,7 @@ function LoginContent() {
         </div>
 
         <p className="text-center text-xs text-blue-200/30 mt-6">
-          MVP v0.2 · 2026 · Agenda Corporativa
+          MVP v0.2 · 2026 · Vento Global
         </p>
       </div>
     </div>
