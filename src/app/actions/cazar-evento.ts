@@ -27,11 +27,12 @@ export type CazarEventoResult = {
 
 // ── System prompt ───────────────────────────────────────────────────────
 
-const today = () => new Date().toISOString().split('T')[0]
+const todayStr = () => new Date().toISOString().split('T')[0]
 
 const SYSTEM = `You are a corporate intelligence assistant specialized in finding mining, energy, finance, and industry conferences worldwide.
-Today's date is ${today()}.
-When asked about an event, find its NEXT upcoming edition (after today) using real, current information to get accurate dates and official URLs.
+Today's date is ${todayStr()}.
+When asked about an event, find its NEXT upcoming edition (starting AFTER today) using real, current information to get accurate dates and official URLs.
+CRITICAL: Do NOT return events that have already started or finished. Only return future editions.
 Return ONLY valid JSON — no markdown, no explanations — matching EXACTLY this schema:
 {
   "eventos": [
@@ -183,13 +184,17 @@ export async function cazarEvento(query: string): Promise<CazarEventoResult> {
       .trim()
 
     const parsed = JSON.parse(clean)
+    const hoy = todayStr()
 
-    const borradores: EventoBorrador[] = (parsed.eventos ?? []).slice(0, 3).map(
-      (e: Omit<EventoBorrador, 'id'>, i: number) => ({
-        ...e,
-        id: `draft-${Date.now()}-${i}`,
-      }),
-    )
+    const borradores: EventoBorrador[] = (parsed.eventos ?? [])
+      .filter((e: any) => e.fecha_inicio >= hoy) // Filtro estricto: solo eventos futuros
+      .slice(0, 3)
+      .map(
+        (e: Omit<EventoBorrador, 'id'>, i: number) => ({
+          ...e,
+          id: `draft-${Date.now()}-${i}`,
+        }),
+      )
 
     return { borradores, fuente: 'perplexity' }
   } catch (err) {
