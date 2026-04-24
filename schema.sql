@@ -112,3 +112,22 @@ CREATE POLICY "acceso_autenticados_noticias" ON noticias_eventos FOR ALL TO publ
 
 ALTER TABLE reportes_precios_comunidad ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "acceso_autenticados_precios" ON reportes_precios_comunidad FOR ALL TO public USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS sugerencias_eventos (
+  id               UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  nombre           TEXT         NOT NULL,
+  descripcion      TEXT,
+  tema             TEXT,
+  fecha_inicio     DATE,
+  fecha_fin        DATE,
+  ciudad           TEXT,
+  pais             TEXT,
+  fuente_url       TEXT,
+  nombre_contacto  TEXT,
+  email_contacto   TEXT,
+  estado           TEXT         DEFAULT 'pendiente',
+  created_at       TIMESTAMPTZ  DEFAULT NOW()
+);
+ALTER TABLE sugerencias_eventos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "insert_public" ON sugerencias_eventos FOR INSERT WITH CHECK (true);
+CREATE POLICY "select_admin"  ON sugerencias_eventos FOR SELECT USING (true);

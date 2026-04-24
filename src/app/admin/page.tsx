@@ -6,8 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
 import {
   ArrowLeft, Loader2, ShieldAlert, PlusCircle, CheckCircle2,
-  AlertTriangle, Settings, DollarSign, Zap, Search, BarChart3,
-  Users, TrendingUp, Globe, CalendarDays, X, Database,
+  AlertTriangle, Settings, Zap, Search, BarChart3,
+  Users, TrendingUp, Globe, CalendarDays, X, Database, Inbox,
+  ThumbsUp, ThumbsDown, Mail, Link2,
 } from 'lucide-react'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -27,13 +28,14 @@ const EMPTY_FORM = {
   ciudad: '', pais: '', fuente_url: '', costo_entrada: '',
 }
 
-type TabId = 'ia' | 'stats' | 'usuarios' | 'perfiles'
+type TabId = 'ia' | 'stats' | 'usuarios' | 'perfiles' | 'sugerencias'
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: 'ia',       label: 'Buscador IA',    icon: Search    },
-  { id: 'stats',    label: 'Estadísticas',   icon: BarChart3 },
-  { id: 'usuarios', label: 'Usuarios',       icon: Users     },
-  { id: 'perfiles', label: 'Perfiles',       icon: TrendingUp },
+  { id: 'ia',          label: 'Buscador IA',    icon: Search    },
+  { id: 'stats',       label: 'Estadísticas',   icon: BarChart3 },
+  { id: 'usuarios',    label: 'Usuarios',       icon: Users     },
+  { id: 'perfiles',    label: 'Perfiles',       icon: TrendingUp },
+  { id: 'sugerencias', label: 'Sugerencias',    icon: Inbox     },
 ]
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -102,6 +104,12 @@ export default function AdminPage() {
   const [perfilesLoading, setPerfilesLoading] = useState(false)
   const [perfilesLoaded, setPerfilesLoaded]   = useState(false)
 
+  // ── Sugerencias tab ────────────────────────────────────────────────────
+  const [sugerencias, setSugerencias]     = useState<any[]>([])
+  const [sugerenciasLoading, setSugerenciasLoading] = useState(false)
+  const [sugerenciasLoaded, setSugerenciasLoaded]   = useState(false)
+  const [processingId, setProcessingId]   = useState<string | null>(null)
+
   // ── Auth ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -148,6 +156,19 @@ export default function AdminPage() {
     setUsuariosLoaded(true)
   }, [usuariosLoaded])
 
+  const fetchSugerencias = useCallback(async () => {
+    if (sugerenciasLoaded) return
+    setSugerenciasLoading(true)
+    const { data } = await supabase
+      .from('sugerencias_eventos')
+      .select('*')
+      .eq('estado', 'pendiente')
+      .order('created_at', { ascending: false })
+    setSugerencias(data ?? [])
+    setSugerenciasLoading(false)
+    setSugerenciasLoaded(true)
+  }, [sugerenciasLoaded])
+
   const fetchPerfiles = useCallback(async () => {
     if (perfilesLoaded) return
     setPerfilesLoading(true)
@@ -183,10 +204,11 @@ export default function AdminPage() {
   }, [perfilesLoaded])
 
   useEffect(() => {
-    if (tab === 'stats')    fetchStats()
-    if (tab === 'usuarios') fetchUsuarios()
-    if (tab === 'perfiles') fetchPerfiles()
-  }, [tab, fetchStats, fetchUsuarios, fetchPerfiles])
+    if (tab === 'stats')       fetchStats()
+    if (tab === 'usuarios')    fetchUsuarios()
+    if (tab === 'perfiles')    fetchPerfiles()
+    if (tab === 'sugerencias') fetchSugerencias()
+  }, [tab, fetchStats, fetchUsuarios, fetchPerfiles, fetchSugerencias])
 
   // ── Guards ──────────────────────────────────────────────────────────────
 
@@ -252,6 +274,32 @@ export default function AdminPage() {
     setFormResult(error ? 'error' : 'ok')
     setFormSaving(false)
     if (!error) { setForm(EMPTY_FORM); setTimeout(() => setFormResult(null), 4000) }
+  }
+
+  async function handleAprobar(s: any) {
+    setProcessingId(s.id)
+    const { error } = await supabase.from('eventos_agenda').insert({
+      nombre:       s.nombre,
+      descripcion:  s.descripcion  || null,
+      tema:         s.tema         || null,
+      fecha_inicio: s.fecha_inicio,
+      fecha_fin:    s.fecha_fin,
+      ciudad:       s.ciudad       || null,
+      pais:         s.pais         || null,
+      fuente_url:   s.fuente_url   || null,
+    })
+    if (!error) {
+      await supabase.from('sugerencias_eventos').update({ estado: 'aprobado' }).eq('id', s.id)
+      setSugerencias(prev => prev.filter(x => x.id !== s.id))
+    }
+    setProcessingId(null)
+  }
+
+  async function handleRechazar(id: string) {
+    setProcessingId(id)
+    await supabase.from('sugerencias_eventos').update({ estado: 'rechazado' }).eq('id', id)
+    setSugerencias(prev => prev.filter(x => x.id !== id))
+    setProcessingId(null)
   }
 
   function handleSaveCredits() {
@@ -813,6 +861,138 @@ export default function AdminPage() {
                   </div>
                 </div>
               </>
+            )}
+          </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            TAB 5 — Sugerencias Pendientes
+        ══════════════════════════════════════════════════════════════ */}
+        {tab === 'sugerencias' && (
+          <>
+            {sugerenciasLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            )}
+
+            {!sugerenciasLoading && sugerencias.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <Inbox className="h-8 w-8 text-slate-300" />
+                <p className="text-sm font-semibold text-slate-500">Sin sugerencias pendientes</p>
+                <p className="text-xs text-slate-400">Las propuestas enviadas desde el formulario público aparecerán aquí.</p>
+              </div>
+            )}
+
+            {!sugerenciasLoading && sugerencias.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-400 font-medium">
+                  {sugerencias.length} sugerencia{sugerencias.length !== 1 ? 's' : ''} pendiente{sugerencias.length !== 1 ? 's' : ''} de revisión
+                </p>
+
+                {sugerencias.map(s => (
+                  <div key={s.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+                    {/* Card header */}
+                    <div className="bg-amber-50 border-b border-amber-100 px-6 py-4 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-slate-800 leading-tight">{s.nombre}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Recibida el {new Date(s.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <span className="shrink-0 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full">
+                        Pendiente
+                      </span>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+
+                      {s.descripcion && (
+                        <div className="sm:col-span-2">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Descripción</p>
+                          <p className="text-slate-600 leading-relaxed text-xs">{s.descripcion}</p>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Fechas</p>
+                        <p className="text-slate-700 flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          {s.fecha_inicio ?? '—'} → {s.fecha_fin ?? '—'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Ubicación</p>
+                        <p className="text-slate-700 flex items-center gap-1.5">
+                          <Globe className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          {[s.ciudad, s.pais].filter(Boolean).join(', ') || '—'}
+                        </p>
+                      </div>
+
+                      {s.tema && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Tema</p>
+                          <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded">
+                            {s.tema}
+                          </span>
+                        </div>
+                      )}
+
+                      {s.fuente_url && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Sitio web</p>
+                          <a
+                            href={s.fuente_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-xs flex items-center gap-1 truncate"
+                          >
+                            <Link2 className="h-3 w-3 shrink-0" />
+                            {s.fuente_url}
+                          </a>
+                        </div>
+                      )}
+
+                      {(s.nombre_contacto || s.email_contacto) && (
+                        <div className="sm:col-span-2 border-t border-slate-100 pt-3 mt-1">
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Contacto</p>
+                          <p className="text-slate-600 text-xs flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            {[s.nombre_contacto, s.email_contacto].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card footer — acciones */}
+                    <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => handleRechazar(s.id)}
+                        disabled={processingId === s.id}
+                        className="flex items-center gap-2 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {processingId === s.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <ThumbsDown className="h-4 w-4" />}
+                        Rechazar
+                      </button>
+                      <button
+                        onClick={() => handleAprobar(s)}
+                        disabled={processingId === s.id}
+                        className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 text-sm font-bold transition-colors shadow-sm disabled:opacity-50"
+                      >
+                        {processingId === s.id
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <ThumbsUp className="h-4 w-4" />}
+                        Aprobar y publicar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
