@@ -1,5 +1,5 @@
 -- =============================================================
--- GESTOR VIAJES â€” Schema V3.0 (B2B SaaS)
+-- VENTO GLOBAL â€” Schema V3.0 (B2B SaaS)
 -- Motor: PostgreSQL (Supabase)
 -- =============================================================
 
@@ -131,3 +131,6 @@ CREATE TABLE IF NOT EXISTS sugerencias_eventos (
 ALTER TABLE sugerencias_eventos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "insert_public" ON sugerencias_eventos FOR INSERT WITH CHECK (true);
 CREATE POLICY "select_admin"  ON sugerencias_eventos FOR SELECT USING (true);
+
+-- ACTUALIZACIÓN DE TEMÁTICAS VENTO GLOBAL
+UPDATE eventos_agenda SET tema = CASE WHEN tema = 'Innovación' THEN 'Tecnología e IA' WHEN tema = 'Maquinaria' THEN 'Manufactura e Industria 4.0' WHEN tema = 'Finanzas' THEN 'Finanzas e Inversión' WHEN tema = 'Geología' THEN 'Minería y Metales' WHEN tema = 'Energía' THEN 'Energía y Renovables' WHEN tema = 'Minería' THEN 'Minería y Metales' WHEN tema = 'Otro' THEN 'Otros Temas Estratégicos' ELSE tema END;
