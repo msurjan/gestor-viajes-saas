@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import Sidebar from '@/components/Sidebar'
 import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
 import {
   ArrowLeft, Loader2, ShieldAlert, PlusCircle, CheckCircle2,
@@ -368,12 +369,11 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Sidebar />
+      <div className="sm:ml-20 lg:ml-64">
 
       {/* Header */}
       <div className="bg-[#0c1e3c] text-white px-8 py-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-blue-300/70 hover:text-blue-200 text-sm mb-5 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Dashboard
-        </Link>
         <div className="flex items-center gap-3">
           <Settings className="h-6 w-6 text-blue-400" strokeWidth={1.5} />
           <div>
@@ -992,7 +992,19 @@ export default function AdminPage() {
 
                     {/* Card header */}
                     <div className="bg-amber-50 border-b border-amber-100 px-6 py-4 flex items-start justify-between gap-4">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                            s.tipo === 'evento'    ? 'bg-blue-100 text-blue-700' :
+                            s.tipo === 'tematica'  ? 'bg-indigo-100 text-indigo-700' :
+                            s.tipo === 'geografia' ? 'bg-emerald-100 text-emerald-700' :
+                                                     'bg-amber-100 text-amber-700'
+                          }`}>
+                            {s.tipo === 'evento'    ? 'Evento' :
+                             s.tipo === 'tematica'  ? 'Temática' :
+                             s.tipo === 'geografia' ? 'Geografía' : 'Otra'}
+                          </span>
+                        </div>
                         <p className="text-base font-bold text-slate-800 leading-tight">{s.nombre}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           Recibida el {new Date(s.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -1013,13 +1025,15 @@ export default function AdminPage() {
                         </div>
                       )}
 
-                      <div>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Fechas</p>
-                        <p className="text-slate-700 flex items-center gap-1.5">
-                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          {s.fecha_inicio ?? '—'} → {s.fecha_fin ?? '—'}
-                        </p>
-                      </div>
+                      {(s.fecha_inicio || s.fecha_fin) && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Fechas</p>
+                          <p className="text-slate-700 flex items-center gap-1.5 text-xs">
+                            <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            {s.fecha_inicio ?? '—'} → {s.fecha_fin ?? '—'}
+                          </p>
+                        </div>
+                      )}
 
                       <div>
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Ubicación</p>
@@ -1094,6 +1108,7 @@ export default function AdminPage() {
           </>
         )}
 
+      </div>
       </div>
     </div>
   )

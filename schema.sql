@@ -115,6 +115,7 @@ CREATE POLICY "acceso_autenticados_precios" ON reportes_precios_comunidad FOR AL
 
 CREATE TABLE IF NOT EXISTS sugerencias_eventos (
   id               UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo             TEXT         NOT NULL DEFAULT 'evento', -- 'evento' | 'tematica' | 'geografia' | 'otra'
   nombre           TEXT         NOT NULL,
   descripcion      TEXT,
   tema             TEXT,
@@ -128,9 +129,11 @@ CREATE TABLE IF NOT EXISTS sugerencias_eventos (
   estado           TEXT         DEFAULT 'pendiente',
   created_at       TIMESTAMPTZ  DEFAULT NOW()
 );
+-- Si la tabla ya existe, agregar la columna tipo:
+-- ALTER TABLE sugerencias_eventos ADD COLUMN IF NOT EXISTS tipo text NOT NULL DEFAULT 'evento';
 ALTER TABLE sugerencias_eventos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "insert_public" ON sugerencias_eventos FOR INSERT WITH CHECK (true);
 CREATE POLICY "select_admin"  ON sugerencias_eventos FOR SELECT USING (true);
 
--- ACTUALIZACIÓN DE TEMÁTICAS VENTO GLOBAL
-UPDATE eventos_agenda SET tema = CASE WHEN tema = 'Innovación' THEN 'Tecnología e IA' WHEN tema = 'Maquinaria' THEN 'Manufactura e Industria 4.0' WHEN tema = 'Finanzas' THEN 'Finanzas e Inversión' WHEN tema = 'Geología' THEN 'Minería y Metales' WHEN tema = 'Energía' THEN 'Energía y Renovables' WHEN tema = 'Minería' THEN 'Minería y Metales' WHEN tema = 'Otro' THEN 'Otros Temas Estratégicos' ELSE tema END;
+-- ACTUALIZACIï¿½N DE TEMï¿½TICAS VENTO GLOBAL
+UPDATE eventos_agenda SET tema = CASE WHEN tema = 'Innovaciï¿½n' THEN 'Tecnologï¿½a e IA' WHEN tema = 'Maquinaria' THEN 'Manufactura e Industria 4.0' WHEN tema = 'Finanzas' THEN 'Finanzas e Inversiï¿½n' WHEN tema = 'Geologï¿½a' THEN 'Minerï¿½a y Metales' WHEN tema = 'Energï¿½a' THEN 'Energï¿½a y Renovables' WHEN tema = 'Minerï¿½a' THEN 'Minerï¿½a y Metales' WHEN tema = 'Otro' THEN 'Otros Temas Estratï¿½gicos' ELSE tema END;

@@ -9,7 +9,7 @@ import Link from 'next/link'
 import {
   Loader2, X, CalendarDays, Search, ExternalLink, Download, MapPin,
   Tag, CheckCircle2, Map as MapIcon, Trash2, LogIn, Newspaper,
-  ArrowUpRight, LayoutGrid, Globe,
+  ArrowUpRight, LayoutGrid, Globe, Save,
 } from 'lucide-react'
 import Marketplace from '@/components/Marketplace'
 import Sidebar from '@/components/Sidebar'
@@ -36,6 +36,8 @@ const TEMAS_DISPONIBLES = [
   'Petróleo y Gas',
   'Otros Temas Estratégicos'
 ]
+
+const ADMIN_EMAIL = 'marcelosurjan@gmail.com'
 
 type EventoConAsistencia = EventoAgenda & { estado?: EstadoAgenda }
 
@@ -92,6 +94,10 @@ export default function DashboardPage() {
   const [noticiasModal, setNoticiasModal]     = useState<any[]>([])
   const [loadingNoticias, setLoadingNoticias] = useState(false)
 
+  const [adminEdit, setAdminEdit] = useState<{ fecha_inicio: string; fecha_fin: string; tema: string } | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editSaved, setEditSaved] = useState(false)
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -139,6 +145,19 @@ export default function DashboardPage() {
   }, [session])
 
   useEffect(() => { fetchEventos() }, [fetchEventos])
+
+  useEffect(() => {
+    if (modal && session?.user?.email === ADMIN_EMAIL) {
+      setAdminEdit({
+        fecha_inicio: modal.data.fecha_inicio,
+        fecha_fin:    modal.data.fecha_fin,
+        tema:         modal.data.tema ?? '',
+      })
+      setEditSaved(false)
+    } else {
+      setAdminEdit(null)
+    }
+  }, [modal, session])
 
   const eventosFiltrados = eventos.filter(e => {
     const coincideTema = filtrosTema.length === 0 || (e.tema && filtrosTema.includes(e.tema))
@@ -215,6 +234,24 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleSaveEdit() {
+    if (!modal || !adminEdit) return
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from('eventos_agenda')
+      .update({
+        fecha_inicio: adminEdit.fecha_inicio,
+        fecha_fin:    adminEdit.fecha_fin,
+        tema:         adminEdit.tema || null,
+      })
+      .eq('id', modal.data.id)
+    setSavingEdit(false)
+    if (!error) {
+      setEditSaved(true)
+      await fetchEventos()
+    }
+  }
+
   async function handleAutoScheduleGoogle() {
     alert("Sincronización silenciosa con Google Calendar (Requiere Token OAuth). Esta funcionalidad enviará el evento directamente a tu calendario corporativo vía API.")
   }
@@ -262,7 +299,7 @@ export default function DashboardPage() {
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0c1e3c]">Agenda Corporativa</h1>
+            <h1 className="text-2xl font-semibold text-[#0c1e3c]">Vento Global</h1>
             <p className="text-sm text-slate-500 mt-1">
               Catálogo global B2B. {session ? 'Asistencias individuales.' : 'Inicia sesión para gestionar tu asistencia.'}
             </p>
@@ -501,6 +538,54 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-500">No hay noticias recientes para este evento en la prensa.</p>
                   )}
                 </div>
+
+                {adminEdit && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Edición Admin</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Fecha inicio</label>
+                        <input
+                          type="date"
+                          value={adminEdit.fecha_inicio}
+                          onChange={e => setAdminEdit(p => p && ({ ...p, fecha_inicio: e.target.value }))}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Fecha fin</label>
+                        <input
+                          type="date"
+                          value={adminEdit.fecha_fin}
+                          onChange={e => setAdminEdit(p => p && ({ ...p, fecha_fin: e.target.value }))}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-200"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Temática</label>
+                      <select
+                        value={adminEdit.tema}
+                        onChange={e => setAdminEdit(p => p && ({ ...p, tema: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-200"
+                      >
+                        <option value="">Sin tema</option>
+                        {TEMAS_DISPONIBLES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={savingEdit}
+                        className="flex items-center gap-2 rounded-lg bg-[#0c1e3c] hover:bg-blue-900 text-white px-4 py-2 text-xs font-bold transition-colors disabled:opacity-60"
+                      >
+                        {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Guardar cambios
+                      </button>
+                      {editSaved && <span className="text-xs text-emerald-600 font-semibold">✓ Guardado</span>}
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-slate-100 pt-5 flex items-center justify-between">
                   <div className="flex flex-wrap gap-2">
