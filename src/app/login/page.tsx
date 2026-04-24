@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Globe, Loader2, AlertCircle, Lock, LogIn } from 'lucide-react'
 
 export default function LoginPage() {
@@ -14,90 +14,105 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted]         = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [nombre, setNombre] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [nombre, setNombre]           = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
+  const [error, setError]             = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
-    
-    // Detectar errores de OAuth devueltos en la URL (ej: ?error_description=...)
     const errorDesc = searchParams.get('error_description')
-    if (errorDesc) {
-      setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')))
-    }
+    if (errorDesc) setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')))
   }, [searchParams])
 
-  if (!mounted) return null // Evitar Hydration Mismatch
+  if (!mounted) return null
 
+  // ── OAuth ────────────────────────────────────────────────────────────────
   async function handleOAuthLogin(provider: 'azure') {
+    setLoading(true)
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
         scopes: 'Calendars.ReadWrite',
-        redirectTo: window.location.origin // Detecta dinámicamente la URL (localhost o producción)
-      }
+        redirectTo: window.location.origin,
+      },
     })
   }
 
+  // ── Anonymous (Explorar sin cuenta) ──────────────────────────────────────
+  async function handleGuestLogin() {
+    setGuestLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.signInAnonymously()
+    if (error) {
+      setError('No se pudo iniciar como invitado. Verifica que los logins anónimos estén habilitados en Supabase.')
+      setGuestLoading(false)
+      return
+    }
+    window.location.href = '/'
+  }
+
+  // ── Email / Password ─────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     if (isRegistering) {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
         password,
-        options: {
-          data: { full_name: nombre }
-        }
+        options: { data: { full_name: nombre } },
       })
 
-      if (error) {
-        setError(error.message)
+      if (signUpError) {
+        setError(signUpError.message)
         setLoading(false)
         return
       }
 
-      // Crear el perfil
+      // Crear perfil inmediatamente si el usuario ya está confirmado
       if (data.user) {
         await supabase.from('perfiles_usuarios').upsert({
           user_id: data.user.id,
-          es_demo: false
+          es_demo: false,
         })
       }
 
+      // Intentar login directo (funciona si email confirmation está desactivado)
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
       if (!signInError) {
-        router.push('/')
-        router.refresh()
+        window.location.href = '/'
         return
       }
+
+      // Si falla (necesita confirmación de email), volver al form de login
       setError(null)
       setIsRegistering(false)
       setLoading(false)
       return
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError(error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos.' : error.message)
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+    if (loginError) {
+      setError(
+        loginError.message === 'Invalid login credentials'
+          ? 'Email o contraseña incorrectos.'
+          : loginError.message,
+      )
       setLoading(false)
       return
     }
 
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0c1e3c] flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -113,7 +128,6 @@ function LoginContent() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Card header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-5">
             <div className="flex items-center gap-2">
               <Lock className="h-4 w-4 text-blue-200" />
@@ -126,9 +140,7 @@ function LoginContent() {
             </h1>
           </div>
 
-          {/* Form */}
           <div className="px-8 py-7">
-            
             <form onSubmit={handleSubmit} className="space-y-4">
               {isRegistering && (
                 <div className="space-y-1">
@@ -177,7 +189,7 @@ function LoginContent() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || guestLoading}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0c1e3c] py-3 text-sm font-bold text-white hover:bg-blue-900 disabled:opacity-60 transition-colors shadow-sm"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
@@ -187,7 +199,7 @@ function LoginContent() {
               <div className="text-center mt-4">
                 <button
                   type="button"
-                  onClick={() => setIsRegistering(!isRegistering)}
+                  onClick={() => { setIsRegistering(!isRegistering); setError(null) }}
                   className="text-xs text-blue-600 hover:underline font-medium"
                 >
                   {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Crear una corporativa'}
@@ -195,30 +207,30 @@ function LoginContent() {
               </div>
 
               {!isRegistering && (
-                <div className="mt-6 pt-6 border-t border-slate-100 space-y-0">
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
                   <button
                     type="button"
+                    disabled={loading || guestLoading}
                     onClick={() => handleOAuthLogin('azure')}
-                    className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm"
+                    className="w-full flex items-center justify-center gap-3 bg-[#0078D4] hover:bg-[#005a9e] text-white py-3 rounded-xl font-medium transition-all shadow-sm text-sm disabled:opacity-60"
                   >
                     <Globe className="h-4 w-4" /> Entrar con Microsoft
                   </button>
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.setItem('isGuest', 'true')
-                        localStorage.setItem('guest_session_start', Date.now().toString())
-                        router.push('/')
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 text-sm font-medium transition-all"
-                    >
-                      <Globe className="h-4 w-4" /> Explorar sin cuenta
-                    </button>
-                    <p className="text-[10px] text-slate-400 text-center mt-2">
-                      Puedes ver todos los eventos. Para guardar preferencias, regístrate.
-                    </p>
-                  </div>
+
+                  <button
+                    type="button"
+                    disabled={loading || guestLoading}
+                    onClick={handleGuestLogin}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 text-sm font-medium transition-all disabled:opacity-60"
+                  >
+                    {guestLoading
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Globe className="h-4 w-4" />}
+                    {guestLoading ? 'Iniciando…' : 'Explorar sin cuenta'}
+                  </button>
+                  <p className="text-[10px] text-slate-400 text-center">
+                    Puedes ver todos los eventos. Regístrate para guardar tu agenda.
+                  </p>
                 </div>
               )}
             </form>

@@ -97,15 +97,21 @@ export default function DashboardPage() {
   const [adminEdit, setAdminEdit] = useState<{ fecha_inicio: string; fecha_fin: string; tema: string } | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [editSaved, setEditSaved] = useState(false)
+  const [deletingEvento, setDeletingEvento] = useState(false)
+  const [isAnonymous, setIsAnonymous] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) checkDemoStatus(session.user.id)
+      const anon = session?.user?.is_anonymous ?? false
+      setIsAnonymous(anon)
+      if (session && !anon) checkDemoStatus(session.user.id)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) checkDemoStatus(session.user.id)
+      const anon = session?.user?.is_anonymous ?? false
+      setIsAnonymous(anon)
+      if (session && !anon) checkDemoStatus(session.user.id)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -128,7 +134,7 @@ export default function DashboardPage() {
       .order('fecha_inicio')
 
     let asistencias: any[] = []
-    if (session?.user?.id) {
+    if (session?.user?.id && !session.user.is_anonymous) {
       const { data } = await supabase
         .from('asistencias_eventos')
         .select('evento_id, estado_asistencia')
@@ -234,6 +240,23 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleDeleteEvento() {
+    if (!modal || session?.user?.email !== ADMIN_EMAIL) return
+    if (!window.confirm(`¿Eliminar "${modal.data.nombre}" del catálogo global permanentemente? Esta acción no se puede deshacer.`)) return
+    setDeletingEvento(true)
+    const { error } = await supabase
+      .from('eventos_agenda')
+      .delete()
+      .eq('id', modal.data.id)
+    setDeletingEvento(false)
+    if (!error) {
+      await fetchEventos()
+      setModal(null)
+    } else {
+      alert('Error al eliminar: ' + error.message)
+    }
+  }
+
   async function handleSaveEdit() {
     if (!modal || !adminEdit) return
     setSavingEdit(true)
@@ -265,18 +288,23 @@ export default function DashboardPage() {
       {session && <Sidebar />}
       <div className={`${session ? 'sm:ml-20 lg:ml-64' : ''} p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto`}>
 
-        {!session && (
+        {(!session || isAnonymous) && (
           <div className="bg-[#0c1e3c] rounded-2xl p-5 flex items-center gap-4 shadow-sm">
             <Globe className="h-8 w-8 text-blue-400 flex-shrink-0" strokeWidth={1.5} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">Catálogo Global de Eventos B2B</p>
-              <p className="text-xs text-blue-300/70 mt-0.5">Explora libremente. Inicia sesión para gestionar tu agenda.</p>
+              <p className="text-xs text-blue-300/70 mt-0.5">
+                {isAnonymous
+                  ? 'Explorando como invitado. Regístrate para guardar tu agenda corporativa.'
+                  : 'Explora libremente. Inicia sesión para gestionar tu agenda.'}
+              </p>
             </div>
             <Link
               href="/login"
               className="flex items-center gap-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors shadow-sm shrink-0"
             >
-              <LogIn className="h-3.5 w-3.5" /> Iniciar Sesión
+              <LogIn className="h-3.5 w-3.5" />
+              {isAnonymous ? 'Crear cuenta' : 'Iniciar Sesión'}
             </Link>
           </div>
         )}
@@ -391,7 +419,7 @@ export default function DashboardPage() {
                 <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{eventosFiltrados.length}</span>
               </div>
               <div className="p-3 overflow-y-auto max-h-[400px] flex-1 space-y-2">
-                {session ? (
+                {session && !isAnonymous ? (
                   eventosFiltrados.filter(e => e.estado).length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-6">No has confirmado asistencia a ningún evento.</p>
                   ) : (
@@ -483,7 +511,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-inner">
-                  {session?.user ? (
+                  {session?.user && !isAnonymous ? (
                     <div className="flex-1">
                       <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Mi Interés en Asistir</label>
                       <select
@@ -501,13 +529,16 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex-1 text-center py-2">
-                      <p className="text-xs text-slate-500 mb-2">Inicia sesión para registrar tu asistencia</p>
+                      <p className="text-xs text-slate-500 mb-2">
+                        {isAnonymous ? 'Regístrate para guardar tu asistencia' : 'Inicia sesión para registrar tu asistencia'}
+                      </p>
                       <Link
                         href="/login"
                         onClick={() => setModal(null)}
                         className="inline-flex items-center gap-2 bg-[#0c1e3c] hover:bg-blue-900 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
                       >
-                        <LogIn className="h-3.5 w-3.5" /> Iniciar Sesión
+                        <LogIn className="h-3.5 w-3.5" />
+                        {isAnonymous ? 'Crear cuenta' : 'Iniciar Sesión'}
                       </Link>
                     </div>
                   )}
@@ -573,16 +604,26 @@ export default function DashboardPage() {
                         {TEMAS_DISPONIBLES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={savingEdit}
+                          className="flex items-center gap-2 rounded-lg bg-[#0c1e3c] hover:bg-blue-900 text-white px-4 py-2 text-xs font-bold transition-colors disabled:opacity-60"
+                        >
+                          {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                          Guardar cambios
+                        </button>
+                        {editSaved && <span className="text-xs text-emerald-600 font-semibold">✓ Guardado</span>}
+                      </div>
                       <button
-                        onClick={handleSaveEdit}
-                        disabled={savingEdit}
-                        className="flex items-center gap-2 rounded-lg bg-[#0c1e3c] hover:bg-blue-900 text-white px-4 py-2 text-xs font-bold transition-colors disabled:opacity-60"
+                        onClick={handleDeleteEvento}
+                        disabled={deletingEvento}
+                        className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 text-xs font-bold transition-colors disabled:opacity-60"
                       >
-                        {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                        Guardar cambios
+                        {deletingEvento ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        Eliminar del catálogo
                       </button>
-                      {editSaved && <span className="text-xs text-emerald-600 font-semibold">✓ Guardado</span>}
                     </div>
                   </div>
                 )}
@@ -618,7 +659,7 @@ export default function DashboardPage() {
                     </Link>
                   </div>
 
-                  {session?.user && (
+                  {session?.user && !isAnonymous && (
                     <button
                       onClick={handleDelete}
                       disabled={deleting}

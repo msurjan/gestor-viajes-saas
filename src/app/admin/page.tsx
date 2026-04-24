@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
 import { cazarEvento, type EventoBorrador } from '@/app/actions/cazar-evento'
+import { ANGLES } from '@/lib/search-angles'
 import {
   ArrowLeft, Loader2, ShieldAlert, PlusCircle, CheckCircle2,
   AlertTriangle, Settings, Zap, Search, BarChart3,
@@ -85,6 +86,9 @@ export default function AdminPage() {
 
   // ── IA tab ─────────────────────────────────────────────────────────────
   const [query, setQuery]             = useState('')
+  const [lastQuery, setLastQuery]     = useState('')
+  const [angleIndex, setAngleIndex]   = useState(0)
+  const [currentAngleLabel, setCurrentAngleLabel] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [borradores, setBorradores]   = useState<EventoBorrador[]>([])
   const [savingId, setSavingId]       = useState<string | null>(null)
@@ -253,9 +257,25 @@ export default function AdminPage() {
     e.preventDefault()
     if (!query.trim()) return
     setIsSearching(true)
-    const res = await cazarEvento(query)
 
-    // Verificar si ya existen en la base de datos
+    // Si cambia la query, resetear ángulo
+    const isNewQuery = query.trim() !== lastQuery.trim()
+    const nextAngle = isNewQuery ? 0 : angleIndex
+    if (isNewQuery) { setAngleIndex(0); setLastQuery(query.trim()) }
+
+    // Exclusión: todos los nombres ya encontrados (borradores + guardados)
+    const exclude = borradores.map(b => b.nombre)
+
+    const res = await cazarEvento(query, {
+      angleIndex: nextAngle as 0|1|2|3|4,
+      exclude,
+    })
+
+    // Avanzar al siguiente ángulo para la próxima búsqueda
+    if (!isNewQuery) setAngleIndex(i => (i + 1) % ANGLES.length)
+    setCurrentAngleLabel(res.angleLabel ?? ANGLES[nextAngle].label)
+
+    // Verificar duplicados en la BD
     const nombres = res.borradores.map(b => b.nombre)
     const { data: existentes } = await supabase
       .from('eventos_agenda')
@@ -264,10 +284,9 @@ export default function AdminPage() {
 
     const borradoresConCheck = res.borradores.map(b => ({
       ...b,
-      yaExiste: existentes?.some(ex => 
-        ex.nombre === b.nombre && 
-        ex.fecha_inicio === b.fecha_inicio
-      ) ?? false
+      yaExiste: existentes?.some(ex =>
+        ex.nombre === b.nombre && ex.fecha_inicio === b.fecha_inicio
+      ) ?? false,
     }))
 
     setBorradores(prev => {
@@ -309,7 +328,6 @@ export default function AdminPage() {
     if (ex) {
       setFormResult('error')
       setFormSaving(false)
-      setErrorMsg('Este evento ya existe en el catálogo para esa fecha.')
       return
     }
 
@@ -322,7 +340,6 @@ export default function AdminPage() {
     setFormResult(error ? 'error' : 'ok')
     setFormSaving(false)
     if (!error) { setForm(EMPTY_FORM); setTimeout(() => setFormResult(null), 4000) }
-    else { setErrorMsg(error.message) }
   }
 
   async function handleAprobar(s: any) {
@@ -499,9 +516,26 @@ export default function AdminPage() {
 
             {/* AI Search */}
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-2">
-                <Search className="h-4 w-4 text-indigo-500" />
-                <h2 className="text-sm font-semibold text-slate-700">Buscador IA (Perplexity sonar)</h2>
+              <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-indigo-500" />
+                  <h2 className="text-sm font-semibold text-slate-700">Buscador IA (Perplexity sonar)</h2>
+                </div>
+                {/* Angle pills */}
+                <div className="hidden sm:flex items-center gap-1.5">
+                  {ANGLES.map((a, i) => (
+                    <span
+                      key={i}
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${
+                        i === angleIndex && query === lastQuery
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {a.label}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="p-6 space-y-4">
                 <form onSubmit={handleSearch} className="flex gap-2">
@@ -510,17 +544,27 @@ export default function AdminPage() {
                     <input
                       type="text" value={query}
                       onChange={e => setQuery(e.target.value)}
-                      placeholder="Buscar evento con IA (ej. PDAC 2027)..."
+                      placeholder="Buscar con IA — cada clic cambia el ángulo de búsqueda..."
                       disabled={isSearching}
                       className="w-full rounded-full border border-indigo-200 bg-indigo-50/50 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-indigo-300 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
                     />
                   </div>
                   <button
                     type="submit" disabled={isSearching || !query.trim()}
-                    className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                    className={`rounded-full px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-colors flex items-center gap-2 ${
+                      borradores.length > 0 && query === lastQuery
+                        ? 'bg-violet-600 hover:bg-violet-700'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
                   >
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    {isSearching ? 'Buscando…' : 'Buscar'}
+                    {isSearching
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Search className="h-4 w-4" />}
+                    {isSearching
+                      ? 'Buscando…'
+                      : borradores.length > 0 && query === lastQuery
+                      ? 'Buscar otro ángulo →'
+                      : 'Buscar'}
                   </button>
                   {isSearching && (
                     <button
@@ -531,6 +575,20 @@ export default function AdminPage() {
                     </button>
                   )}
                 </form>
+                {currentAngleLabel && borradores.length > 0 && (
+                  <p className="text-xs text-slate-400">
+                    Último ángulo: <span className="font-semibold text-indigo-600">{currentAngleLabel}</span>
+                    {' · '}{borradores.length} resultado{borradores.length !== 1 ? 's' : ''} acumulado{borradores.length !== 1 ? 's' : ''}
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={() => { setBorradores([]); setSavedIds(new Set()); setAngleIndex(0); setCurrentAngleLabel(''); setLastQuery('') }}
+                      className="text-red-400 hover:text-red-600 hover:underline"
+                    >
+                      Limpiar
+                    </button>
+                  </p>
+                )}
 
                 {borradores.length > 0 && (
                   <div className="space-y-4">
