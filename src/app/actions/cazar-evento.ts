@@ -17,6 +17,7 @@ export type EventoBorrador = {
   costo_entrada: string
   imagen_url: string
   confianza: number      // 0 – 1
+  yaExiste?: boolean     // New: indicates if it's already in DB
 }
 
 export type CazarEventoResult = {

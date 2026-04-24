@@ -254,8 +254,24 @@ export default function AdminPage() {
     if (!query.trim()) return
     setIsSearching(true)
     const res = await cazarEvento(query)
+
+    // Verificar si ya existen en la base de datos
+    const nombres = res.borradores.map(b => b.nombre)
+    const { data: existentes } = await supabase
+      .from('eventos_agenda')
+      .select('nombre, fecha_inicio')
+      .in('nombre', nombres)
+
+    const borradoresConCheck = res.borradores.map(b => ({
+      ...b,
+      yaExiste: existentes?.some(ex => 
+        ex.nombre === b.nombre && 
+        ex.fecha_inicio === b.fecha_inicio
+      ) ?? false
+    }))
+
     setBorradores(prev => {
-      const newOnes = res.borradores.filter(b => !prev.some(p => p.id === b.id))
+      const newOnes = borradoresConCheck.filter(b => !prev.some(p => p.id === b.id))
       return [...newOnes, ...prev]
     })
     setIsSearching(false)
@@ -281,6 +297,22 @@ export default function AdminPage() {
   async function handleCreateEvento(e: React.FormEvent) {
     e.preventDefault()
     setFormSaving(true); setFormResult(null)
+
+    // Check for duplicates before manual insert
+    const { data: ex } = await supabase
+      .from('eventos_agenda')
+      .select('id')
+      .eq('nombre', form.nombre.trim())
+      .eq('fecha_inicio', form.fecha_inicio)
+      .maybeSingle()
+
+    if (ex) {
+      setFormResult('error')
+      setFormSaving(false)
+      setErrorMsg('Este evento ya existe en el catálogo para esa fecha.')
+      return
+    }
+
     const { error } = await supabase.from('eventos_agenda').insert({
       nombre: form.nombre.trim(), descripcion: form.descripcion.trim(),
       tema: form.tema || null, fecha_inicio: form.fecha_inicio, fecha_fin: form.fecha_fin,
@@ -290,6 +322,7 @@ export default function AdminPage() {
     setFormResult(error ? 'error' : 'ok')
     setFormSaving(false)
     if (!error) { setForm(EMPTY_FORM); setTimeout(() => setFormResult(null), 4000) }
+    else { setErrorMsg(error.message) }
   }
 
   async function handleAprobar(s: any) {
@@ -591,13 +624,21 @@ export default function AdminPage() {
                           </div>
 
                           {/* Footer */}
-                          <div className="flex items-center justify-end pt-1">
+                          <div className="flex items-center justify-between pt-1">
+                            {b.yaExiste && !saved ? (
+                              <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                <span className="text-[10px] font-bold uppercase tracking-wide">Ya en catálogo</span>
+                              </div>
+                            ) : <div />}
                             <button
                               onClick={() => handleSaveBorrador(b)}
-                              disabled={!!savingId || saved}
+                              disabled={!!savingId || saved || b.yaExiste}
                               className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                                 saved
                                   ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                                  : b.yaExiste 
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
                                   : 'bg-[#0c1e3c] hover:bg-blue-900 text-white disabled:opacity-60'
                               }`}
                             >
@@ -606,7 +647,7 @@ export default function AdminPage() {
                                 : saved
                                 ? <CheckCircle2 className="h-3.5 w-3.5" />
                                 : <PlusCircle className="h-3.5 w-3.5" />}
-                              {saved ? 'Guardado en catálogo' : 'Guardar en catálogo'}
+                              {saved ? 'Guardado en catálogo' : b.yaExiste ? 'Evento duplicado' : 'Guardar en catálogo'}
                             </button>
                           </div>
                         </div>

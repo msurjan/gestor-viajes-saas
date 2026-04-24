@@ -58,7 +58,8 @@ CREATE TABLE eventos_agenda (
   created_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
 
-  CONSTRAINT fechas_validas CHECK (fecha_fin >= fecha_inicio)
+  CONSTRAINT fechas_validas CHECK (fecha_fin >= fecha_inicio),
+  CONSTRAINT unique_evento_edicion UNIQUE (nombre, fecha_inicio, ciudad)
 );
 
 CREATE TABLE asistencias_eventos (
